@@ -133,7 +133,7 @@ export default function LoginForm() {
               Don't have an account?{" "}
             </span>
             <Link
-              href="/register"
+              href="/auth/register"
               className="text-sm text-primary-600 hover:text-primary-500"
             >
               Sign up

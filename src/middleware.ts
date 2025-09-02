@@ -11,7 +11,21 @@ export async function middleware(req: NextRequest) {
   // Example: restrict /admin routes
   if (pathname.startsWith("/admin")) {
     if (!token || token.role !== Role.ADMIN) {
-      return NextResponse.redirect(new URL("/login", req.url));
+      return NextResponse.redirect(new URL("/auth/login", req.url));
+    }
+  }
+
+  // Restrict /owner routes to facility owners
+  if (pathname.startsWith("/owner")) {
+    if (!token || token.role !== Role.OWNER) {
+      return NextResponse.redirect(new URL("/auth/login", req.url));
+    }
+  }
+
+  // Protect dashboard and booking routes
+  if (pathname.startsWith("/dashboard") || pathname.startsWith("/bookings")) {
+    if (!token) {
+      return NextResponse.redirect(new URL("/auth/login", req.url));
     }
   }
 

@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node:*)",
+      "Bash(npx dotenv -e .env.local -- npx prisma migrate deploy:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
