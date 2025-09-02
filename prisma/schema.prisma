@@ -1,0 +1,217 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Models
+
+model User {
+  id             Int            @id @default(autoincrement())
+  email          String         @unique
+  fullName       String
+  avatarUrl      String?
+  avatarPublicId String?
+  passwordHash   String
+  role           Role           @default(USER)
+  emailVerified  Boolean        @default(false)
+  ownerProfile   FacilityOwner?
+  ownerProfileId Int?
+  bookings       Booking[]
+  reviews        Review[]
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  Session        Session[]
+  Account        Account[]
+}
+
+model FacilityOwner {
+  id           Int      @id @default(autoincrement())
+  user         User     @relation(fields: [userId], references: [id])
+  userId       Int      @unique
+  phone        String?
+  businessName String?
+  address      String?
+  venues       Venue[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Venue {
+  id          Int           @id @default(autoincrement())
+  owner       FacilityOwner @relation(fields: [ownerId], references: [id])
+  ownerId     Int
+  name        String
+  slug        String        @unique
+  description String?
+  address     String
+  city        String
+  state       String?
+  country     String?       @default("India")
+  latitude    Float?
+  longitude   Float?
+  amenities   String[]      @default([]) // e.g., ["parking", "lights"]
+  photos      String[]      @default([]) // Cloudinary URLs or public_ids
+  approved    Boolean       @default(false)
+  rating      Float? // optional aggregate
+  courts      Court[]
+  reviews     Review[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([city])
+  @@index([approved])
+}
+
+model Court {
+  id           Int       @id @default(autoincrement())
+  venue        Venue     @relation(fields: [venueId], references: [id])
+  venueId      Int
+  name         String
+  sport        String // e.g., "Badminton", "Tennis", "Football"
+  pricePerHour Int // store in smallest currency unit (e.g., INR paisa OR cents)
+  currency     String    @default("INR")
+  openTime     Int // hour in 24h, e.g., 6
+  closeTime    Int // hour in 24h, e.g., 22
+  bookings     Booking[]
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([sport])
+}
+
+model Booking {
+  id             Int           @id @default(autoincrement())
+  user           User          @relation(fields: [userId], references: [id])
+  userId         Int
+  court          Court         @relation(fields: [courtId], references: [id])
+  courtId        Int
+  startTime      DateTime
+  endTime        DateTime
+  status         BookingStatus @default(PENDING)
+  payment        Payment?
+  paymentId      Int?          @unique
+  idempotencyKey String?       @unique
+  notes          String?
+  createdAt      DateTime      @default(now())
+
+  // Prevent two exact same startTime bookings for same court
+  @@unique([courtId, startTime])
+  @@index([userId])
+  @@index([courtId])
+  @@index([status])
+}
+
+model Payment {
+  id                    Int           @id @default(autoincrement())
+  booking               Booking?      @relation(fields: [bookingId], references: [id])
+  bookingId             Int?          @unique
+  gateway               String        @default("stripe")
+  stripePaymentIntentId String?       @unique
+  stripeChargeId        String? // optional
+  amount                Int // smallest currency unit
+  currency              String        @default("INR")
+  status                PaymentStatus @default(PENDING)
+  receiptUrl            String? // Stripe receipt URL
+  paymentMethod         String?
+  createdAt             DateTime      @default(now())
+
+  @@index([stripePaymentIntentId])
+  @@index([status])
+}
+
+model Review {
+  id        Int      @id @default(autoincrement())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    Int
+  venue     Venue    @relation(fields: [venueId], references: [id])
+  venueId   Int
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+
+  @@index([venueId])
+  @@index([userId])
+}
+
+model EmailOtp {
+  id        Int      @id @default(autoincrement())
+  email     String
+  tokenHash String // store hashed OTP (bcrypt or sha256 with salt)
+  expiresAt DateTime
+  attempts  Int      @default(0)
+  verified  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([email])
+  @@index([expiresAt])
+}
+
+// Optional NextAuth-compatible Session / Account models (helpful if you decide to use NextAuth adapter)
+model Session {
+  id           Int      @id @default(autoincrement())
+  sessionToken String   @unique
+  user         User     @relation(fields: [userId], references: [id])
+  userId       Int
+  expires      DateTime
+
+  @@index([userId])
+  @@index([expires])
+}
+
+model Account {
+  id                Int     @id @default(autoincrement())
+  user              User    @relation(fields: [userId], references: [id])
+  userId            Int
+  provider          String
+  providerAccountId String
+  access_token      String?
+  refresh_token     String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model VerificationToken {
+  id         Int      @id @default(autoincrement())
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@index([identifier])
+}
+
+// Enums
+enum Role {
+  USER
+  OWNER
+  ADMIN
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  REFUNDED
+}
