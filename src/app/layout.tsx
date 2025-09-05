@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import Providers from "@/components/providers/Providers";
 import Navbar from "@/components/layout/Navbar";
 import "./globals.css";
+import Footer from "@/components/layout/Footer";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -16,7 +17,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "SportsBook - Book Your Favorite Sports Facilities",
-  description: "Discover and book local sports facilities including badminton courts, tennis courts, football fields and more. Join matches with other players in your area.",
+  description:
+    "Discover and book local sports facilities including badminton courts, tennis courts, football fields and more. Join matches with other players in your area.",
 };
 
 export default function RootLayout({
@@ -32,9 +34,8 @@ export default function RootLayout({
         <Providers>
           <div className="min-h-screen flex flex-col">
             <Navbar />
-            <main className="flex-1">
-              {children}
-            </main>
+            <main className="flex-1">{children}</main>
+            <Footer/>
           </div>
         </Providers>
       </body>
