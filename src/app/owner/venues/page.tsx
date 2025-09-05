@@ -12,7 +12,7 @@ import {
   EyeIcon,
   MapPinIcon,
   StarIcon,
-  ClockIcon
+  ClockIcon,
 } from "@heroicons/react/24/outline";
 
 interface Venue {
@@ -37,63 +37,36 @@ export default function OwnerVenuesPage() {
   const router = useRouter();
   const [venues, setVenues] = useState<Venue[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   useEffect(() => {
     if (status === "loading") return;
 
-    if (!session) {
+    if (!session || session.user.role !== "OWNER") {
       router.push("/auth/login");
       return;
     }
+    // OwnerVenuesPage.tsx (inside useEffect)
 
-    // TODO: Fetch actual venues from API
-    // For now, we'll use mock data
-    setTimeout(() => {
-      setVenues([
-        {
-          id: 1,
-          name: "Elite Sports Complex",
-          description: "Premium badminton facility with 6 courts",
-          address: "123 Sports Street",
-          city: "Mumbai",
-          approved: true,
-          rating: 4.8,
-          courts: [
-            { id: 1, name: "Court 1", sport: "Badminton", pricePerHour: 1200 },
-            { id: 2, name: "Court 2", sport: "Badminton", pricePerHour: 1200 },
-          ],
-          createdAt: "2024-01-15"
-        },
-        {
-          id: 2,
-          name: "Tennis Arena Pro",
-          description: "Professional tennis courts with night lighting",
-          address: "456 Tennis Ave",
-          city: "Mumbai",
-          approved: true,
-          rating: 4.6,
-          courts: [
-            { id: 3, name: "Court A", sport: "Tennis", pricePerHour: 2000 },
-            { id: 4, name: "Court B", sport: "Tennis", pricePerHour: 2000 },
-          ],
-          createdAt: "2024-02-01"
-        },
-        {
-          id: 3,
-          name: "Football Ground Central",
-          description: "Full-sized football ground with synthetic turf",
-          address: "789 Field Road",
-          city: "Mumbai",
-          approved: false,
-          rating: null,
-          courts: [
-            { id: 5, name: "Main Field", sport: "Football", pricePerHour: 3000 },
-          ],
-          createdAt: "2024-03-01"
+    const fetchVenues = async () => {
+      try {
+        const res = await fetch("/api/owner/venues");
+        if (!res.ok) {
+          // Try to parse the error message from the API
+          const errorData = await res.json();
+          throw new Error(errorData.message || "Failed to fetch venues.");
         }
-      ]);
-      setIsLoading(false);
-    }, 1000);
+        const data: Venue[] = await res.json();
+        setVenues(data);
+      } catch (error: any) {
+        console.error("Error fetching venues:", error);
+        setFetchError(error.message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchVenues();
   }, [session, status, router]);
 
   if (status === "loading" || isLoading) {
@@ -124,12 +97,22 @@ export default function OwnerVenuesPage() {
           </Link>
         </div>
 
+        {fetchError && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg relative mb-4">
+            <span className="block sm:inline">{fetchError}</span>
+          </div>
+        )}
+
         {/* Venues Grid */}
-        {venues.length === 0 ? (
+        {venues.length === 0 && !fetchError ? (
           <div className="text-center py-12">
             <BuildingOfficeIcon className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-2 text-sm font-semibold text-gray-900">No venues yet</h3>
-            <p className="mt-1 text-sm text-gray-500">Get started by adding your first venue.</p>
+            <h3 className="mt-2 text-sm font-semibold text-gray-900">
+              No venues yet
+            </h3>
+            <p className="mt-1 text-sm text-gray-500">
+              Get started by adding your first venue.
+            </p>
             <div className="mt-6">
               <Link
                 href="/owner/venues/new"
@@ -143,12 +126,15 @@ export default function OwnerVenuesPage() {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
             {venues.map((venue) => (
-              <div key={venue.id} className="bg-white rounded-xl shadow-sm overflow-hidden">
+              <div
+                key={venue.id}
+                className="bg-white rounded-xl shadow-sm overflow-hidden"
+              >
                 {/* Venue Image Placeholder */}
                 <div className="h-48 bg-gradient-to-br from-primary-100 to-primary-200 flex items-center justify-center">
                   <BuildingOfficeIcon className="w-16 h-16 text-primary-600" />
                 </div>
-                
+
                 <div className="p-6">
                   {/* Status Badge */}
                   <div className="flex items-center justify-between mb-3">
@@ -164,15 +150,21 @@ export default function OwnerVenuesPage() {
                     {venue.rating && (
                       <div className="flex items-center">
                         <StarIcon className="w-4 h-4 text-yellow-400 fill-current" />
-                        <span className="text-sm text-gray-600 ml-1">{venue.rating}</span>
+                        <span className="text-sm text-gray-600 ml-1">
+                          {venue.rating}
+                        </span>
                       </div>
                     )}
                   </div>
 
                   {/* Venue Info */}
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">{venue.name}</h3>
-                  <p className="text-sm text-gray-600 mb-3 line-clamp-2">{venue.description}</p>
-                  
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    {venue.name}
+                  </h3>
+                  <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+                    {venue.description}
+                  </p>
+
                   <div className="flex items-center text-sm text-gray-500 mb-3">
                     <MapPinIcon className="w-4 h-4 mr-1" />
                     {venue.address}, {venue.city}
@@ -180,16 +172,24 @@ export default function OwnerVenuesPage() {
 
                   <div className="flex items-center text-sm text-gray-500 mb-4">
                     <ClockIcon className="w-4 h-4 mr-1" />
-                    {venue.courts.length} court{venue.courts.length > 1 ? "s" : ""} available
+                    {venue.courts.length} court
+                    {venue.courts.length > 1 ? "s" : ""} available
                   </div>
 
                   {/* Courts Preview */}
                   <div className="mb-4">
-                    <h4 className="text-sm font-medium text-gray-900 mb-2">Courts:</h4>
+                    <h4 className="text-sm font-medium text-gray-900 mb-2">
+                      Courts:
+                    </h4>
                     <div className="space-y-1">
                       {venue.courts.slice(0, 2).map((court) => (
-                        <div key={court.id} className="flex justify-between text-xs text-gray-600">
-                          <span>{court.name} ({court.sport})</span>
+                        <div
+                          key={court.id}
+                          className="flex justify-between text-xs text-gray-600"
+                        >
+                          <span>
+                            {court.name} ({court.sport})
+                          </span>
                           <span>₹{court.pricePerHour}/hr</span>
                         </div>
                       ))}

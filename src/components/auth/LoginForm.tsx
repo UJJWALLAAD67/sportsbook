@@ -1,25 +1,27 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
-
-// Validation schema
 const loginSchema = z.object({
   email: z.string().email("Enter a valid email"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
+  password: z.string().min(1, "Password is required"),
 });
 type LoginFormData = z.infer<typeof loginSchema>;
 
-export default function LoginForm() {
+export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // ✅ FIX: Get the callbackUrl from the URL search params, with a default
+  const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
 
   const {
     register,
@@ -33,11 +35,20 @@ export default function LoginForm() {
     setIsLoading(true);
     setError("");
     try {
-      const result = await signIn("credentials", { redirect: false, ...data });
-      if (result?.ok) router.push("/dashboard");
-      else setError(result?.error || "Invalid email or password");
-    } catch {
-      setError("Something went wrong. Please try again.");
+      const result = await signIn("credentials", {
+        redirect: false,
+        email: data.email,
+        password: data.password,
+      });
+
+      if (result?.ok) {
+        // ✅ FIX: Push to the dynamic callbackUrl
+        router.push(callbackUrl);
+      } else {
+        setError(result?.error || "Invalid email or password");
+      }
+    } catch (err) {
+      setError("An unexpected error occurred. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -45,22 +56,18 @@ export default function LoginForm() {
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row">
-      {/* Left side image for desktop */}
       <div className="hidden md:flex md:w-1/2 bg-green-600 items-center justify-center">
         <img
-          
-          src="/login/banner.jpg" // replace with your image path
+          src="/login/banner.jpg"
           alt="Sports banner"
           className="object-cover h-full w-full"
         />
       </div>
-
-      {/* Right side login form */}
       <div className="flex w-full md:w-1/2 items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md w-full space-y-8">
           <div>
             <h1 className="text-3xl font-extrabold text-green-800 text-center">
-              Sports Book
+              SportsBook
             </h1>
             <h2 className="mt-2 text-center text-xl text-gray-700">Login</h2>
           </div>

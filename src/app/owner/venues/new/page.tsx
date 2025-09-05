@@ -3,47 +3,21 @@
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { useForm, useFieldArray } from "react-hook-form";
+import { useForm, useFieldArray, SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import {
-  TrashIcon,
-  PlusIcon,
-  PhotoIcon
-} from "@heroicons/react/24/outline";
-
-// Venue creation schema
-const venueSchema = z.object({
-  name: z.string().min(1, "Venue name is required"),
-  description: z.string().min(10, "Description must be at least 10 characters"),
-  address: z.string().min(5, "Address is required"),
-  city: z.string().min(1, "City is required"),
-  state: z.string().optional(),
-  country: z.string().default("India"),
-  latitude: z.number().optional(),
-  longitude: z.number().optional(),
-  amenities: z.array(z.string()).default([]),
-  courts: z.array(z.object({
-    name: z.string().min(1, "Court name is required"),
-    sport: z.string().min(1, "Sport type is required"),
-    pricePerHour: z.number().min(1, "Price per hour is required"),
-    currency: z.string().default("INR"),
-    openTime: z.number().min(0).max(23),
-    closeTime: z.number().min(1).max(24)
-  })).min(1, "At least one court is required")
-});
-
-type VenueFormData = z.infer<typeof venueSchema>;
+import { TrashIcon, PlusIcon, PhotoIcon } from "@heroicons/react/24/outline";
+import { venueSchema, VenueFormData } from "@/lib/schemas/venue";
 
 const SPORTS_OPTIONS = [
   "Badminton",
-  "Tennis", 
+  "Tennis",
   "Football",
   "Cricket",
   "Basketball",
   "Volleyball",
   "Squash",
-  "Table Tennis"
+  "Table Tennis",
 ];
 
 const AMENITIES_OPTIONS = [
@@ -55,21 +29,20 @@ const AMENITIES_OPTIONS = [
   "Equipment Rental",
   "Cafeteria",
   "Wi-Fi",
-  "Seating Area"
+  "Seating Area",
 ];
 
 export default function NewVenuePage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
+  const [apiError, setApiError] = useState<string | null>(null);
 
   const {
     register,
     control,
     handleSubmit,
-    watch,
-    formState: { errors }
+    formState: { errors },
   } = useForm<VenueFormData>({
     resolver: zodResolver(venueSchema),
     defaultValues: {
@@ -82,50 +55,52 @@ export default function NewVenuePage() {
           pricePerHour: 1000,
           currency: "INR",
           openTime: 6,
-          closeTime: 22
-        }
-      ]
-    }
+          closeTime: 22,
+        },
+      ],
+    },
   });
 
   const { fields, append, remove } = useFieldArray({
     control,
-    name: "courts"
+    name: "courts",
   });
 
   useEffect(() => {
     if (status === "loading") return;
-
-    if (!session) {
+    // Redirect if user is not authenticated or not an owner
+    if (!session || session.user.role !== "OWNER") {
       router.push("/auth/login");
-      return;
     }
   }, [session, status, router]);
 
-  const handleAmenityToggle = (amenity: string) => {
-    setSelectedAmenities(prev => {
-      const newAmenities = prev.includes(amenity)
-        ? prev.filter(a => a !== amenity)
-        : [...prev, amenity];
-      return newAmenities;
-    });
-  };
-
-  const onSubmit = async (data: VenueFormData) => {
+  // Use SubmitHandler to explicitly type the function
+  const onSubmit: SubmitHandler<VenueFormData> = async (data) => {
     setIsLoading(true);
+    setApiError(null);
+    // Create a deep copy to avoid mutating the original form data
+    const payload = JSON.parse(JSON.stringify(data));
+
+    // Convert price to paisa for each court
+    payload.courts.forEach((court: any) => {
+      court.pricePerHour = Math.round(court.pricePerHour * 100);
+    });
     try {
-      // Include selected amenities in the form data
-      data.amenities = selectedAmenities;
-      
-      // TODO: Send data to API
-      console.log("Venue data:", data);
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
+      const res = await fetch("/api/owner/venues", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Failed to create venue");
+      }
+
       router.push("/owner/venues?success=created");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating venue:", error);
+      setApiError(error.message);
     } finally {
       setIsLoading(false);
     }
@@ -142,7 +117,6 @@ export default function NewVenuePage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Add New Venue</h1>
           <p className="text-gray-600 mt-2">
@@ -150,11 +124,18 @@ export default function NewVenuePage() {
           </p>
         </div>
 
+        {apiError && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg relative mb-4">
+            <span className="block sm:inline">{apiError}</span>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
           {/* Basic Information */}
           <div className="bg-white rounded-xl shadow-sm p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-6">Basic Information</h2>
-            
+            <h2 className="text-xl font-semibold text-gray-900 mb-6">
+              Basic Information
+            </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -166,10 +147,11 @@ export default function NewVenuePage() {
                   placeholder="Elite Sports Complex"
                 />
                 {errors.name && (
-                  <p className="mt-1 text-sm text-red-600">{errors.name.message}</p>
+                  <p className="mt-1 text-sm text-red-600">
+                    {errors.name.message}
+                  </p>
                 )}
               </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   City *
@@ -180,11 +162,12 @@ export default function NewVenuePage() {
                   placeholder="Mumbai"
                 />
                 {errors.city && (
-                  <p className="mt-1 text-sm text-red-600">{errors.city.message}</p>
+                  <p className="mt-1 text-sm text-red-600">
+                    {errors.city.message}
+                  </p>
                 )}
               </div>
             </div>
-
             <div className="mt-6">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Description *
@@ -196,10 +179,11 @@ export default function NewVenuePage() {
                 placeholder="Describe your venue, facilities, and what makes it special..."
               />
               {errors.description && (
-                <p className="mt-1 text-sm text-red-600">{errors.description.message}</p>
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.description.message}
+                </p>
               )}
             </div>
-
             <div className="mt-6">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Address *
@@ -210,10 +194,11 @@ export default function NewVenuePage() {
                 placeholder="123 Sports Street, Andheri West"
               />
               {errors.address && (
-                <p className="mt-1 text-sm text-red-600">{errors.address.message}</p>
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.address.message}
+                </p>
               )}
             </div>
-
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -225,7 +210,6 @@ export default function NewVenuePage() {
                   placeholder="Maharashtra"
                 />
               </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Country
@@ -233,7 +217,6 @@ export default function NewVenuePage() {
                 <input
                   {...register("country")}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  value="India"
                   readOnly
                 />
               </div>
@@ -242,15 +225,16 @@ export default function NewVenuePage() {
 
           {/* Amenities */}
           <div className="bg-white rounded-xl shadow-sm p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-6">Amenities</h2>
-            
+            <h2 className="text-xl font-semibold text-gray-900 mb-6">
+              Amenities
+            </h2>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               {AMENITIES_OPTIONS.map((amenity) => (
                 <label key={amenity} className="flex items-center">
                   <input
                     type="checkbox"
-                    checked={selectedAmenities.includes(amenity)}
-                    onChange={() => handleAmenityToggle(amenity)}
+                    value={amenity}
+                    {...register("amenities")}
                     className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                   />
                   <span className="ml-2 text-sm text-gray-700">{amenity}</span>
@@ -265,24 +249,33 @@ export default function NewVenuePage() {
               <h2 className="text-xl font-semibold text-gray-900">Courts</h2>
               <button
                 type="button"
-                onClick={() => append({
-                  name: `Court ${fields.length + 1}`,
-                  sport: "Badminton",
-                  pricePerHour: 1000,
-                  currency: "INR",
-                  openTime: 6,
-                  closeTime: 22
-                })}
+                onClick={() =>
+                  append({
+                    name: `Court ${fields.length + 1}`,
+                    sport: "Badminton",
+                    pricePerHour: 0,
+                    currency: "INR",
+                    openTime: 6,
+                    closeTime: 22,
+                  })
+                }
                 className="inline-flex items-center px-3 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
               >
                 <PlusIcon className="w-4 h-4 mr-2" />
                 Add Court
               </button>
             </div>
-
+            {errors.courts && (
+              <p className="mb-4 text-sm text-red-600">
+                {errors.courts.message}
+              </p>
+            )}
             <div className="space-y-6">
               {fields.map((field, index) => (
-                <div key={field.id} className="border border-gray-200 rounded-lg p-4">
+                <div
+                  key={field.id}
+                  className="border border-gray-200 rounded-lg p-4"
+                >
                   <div className="flex justify-between items-center mb-4">
                     <h3 className="text-lg font-medium text-gray-900">
                       Court {index + 1}
@@ -297,7 +290,6 @@ export default function NewVenuePage() {
                       </button>
                     )}
                   </div>
-
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -314,7 +306,6 @@ export default function NewVenuePage() {
                         </p>
                       )}
                     </div>
-
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Sport *
@@ -324,7 +315,9 @@ export default function NewVenuePage() {
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                       >
                         {SPORTS_OPTIONS.map((sport) => (
-                          <option key={sport} value={sport}>{sport}</option>
+                          <option key={sport} value={sport}>
+                            {sport}
+                          </option>
                         ))}
                       </select>
                       {errors.courts?.[index]?.sport && (
@@ -333,15 +326,14 @@ export default function NewVenuePage() {
                         </p>
                       )}
                     </div>
-
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Price per Hour (₹) *
                       </label>
                       <input
                         type="number"
-                        {...register(`courts.${index}.pricePerHour`, { 
-                          valueAsNumber: true 
+                        {...register(`courts.${index}.pricePerHour`, {
+                          valueAsNumber: true,
                         })}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                         placeholder="1000"
@@ -352,7 +344,6 @@ export default function NewVenuePage() {
                         </p>
                       )}
                     </div>
-
                     <div className="grid grid-cols-2 gap-2">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -360,31 +351,30 @@ export default function NewVenuePage() {
                         </label>
                         <select
                           {...register(`courts.${index}.openTime`, {
-                            valueAsNumber: true
+                            valueAsNumber: true,
                           })}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                         >
                           {Array.from({ length: 24 }, (_, i) => (
                             <option key={i} value={i}>
-                              {i.toString().padStart(2, '0')}:00
+                              {i.toString().padStart(2, "0")}:00
                             </option>
                           ))}
                         </select>
                       </div>
-                      
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Close Time
                         </label>
                         <select
                           {...register(`courts.${index}.closeTime`, {
-                            valueAsNumber: true
+                            valueAsNumber: true,
                           })}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                         >
                           {Array.from({ length: 24 }, (_, i) => (
                             <option key={i + 1} value={i + 1}>
-                              {(i + 1).toString().padStart(2, '0')}:00
+                              {(i + 1).toString().padStart(2, "0")}:00
                             </option>
                           ))}
                         </select>
@@ -399,7 +389,6 @@ export default function NewVenuePage() {
           {/* Photo Upload Placeholder */}
           <div className="bg-white rounded-xl shadow-sm p-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-6">Photos</h2>
-            
             <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
               <PhotoIcon className="mx-auto h-12 w-12 text-gray-400" />
               <p className="mt-2 text-sm text-gray-600">
