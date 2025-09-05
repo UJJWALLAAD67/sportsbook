@@ -4,7 +4,6 @@ import { prisma } from "@/lib/prisma";
 import { verifyPassword } from "@/lib/hash";
 import { Role } from "@/generated/prisma";
 
-
 const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
@@ -41,7 +40,7 @@ const authOptions: NextAuthOptions = {
 
   pages: {
     signIn: "/auth/login",
-    signUp: "/auth/register",
+    // signUp: "/auth/register",
   },
 
   session: { strategy: "jwt" },

@@ -10,7 +10,7 @@ import {
   StarIcon,
   BuildingOfficeIcon,
   CurrencyDollarIcon,
-  XMarkIcon
+  XMarkIcon,
 } from "@heroicons/react/24/outline";
 
 interface Venue {
@@ -55,7 +55,7 @@ export default function VenuesPage() {
     minPrice: 0,
     maxPrice: 10000,
     city: "",
-    rating: 0
+    rating: 0,
   });
 
   // Mock data - replace with actual API call
@@ -63,7 +63,8 @@ export default function VenuesPage() {
     {
       id: 1,
       name: "Elite Sports Complex",
-      description: "Premium badminton facility with 6 professional courts, air conditioning, and modern amenities",
+      description:
+        "Premium badminton facility with 6 professional courts, air conditioning, and modern amenities",
       address: "123 Sports Street, Andheri West",
       city: "Mumbai",
       rating: 4.8,
@@ -71,64 +72,78 @@ export default function VenuesPage() {
       courts: [
         { id: 1, name: "Court 1", sport: "Badminton", pricePerHour: 1200 },
         { id: 2, name: "Court 2", sport: "Badminton", pricePerHour: 1200 },
-        { id: 3, name: "Court 3", sport: "Badminton", pricePerHour: 1200 }
+        { id: 3, name: "Court 3", sport: "Badminton", pricePerHour: 1200 },
       ],
       minPrice: 1200,
       maxPrice: 1200,
-      sports: ["Badminton"]
+      sports: ["Badminton"],
     },
     {
       id: 2,
       name: "Tennis Arena Pro",
-      description: "Professional tennis courts with night lighting and synthetic surface",
+      description:
+        "Professional tennis courts with night lighting and synthetic surface",
       address: "456 Tennis Ave, Bandra",
-      city: "Mumbai", 
+      city: "Mumbai",
       rating: 4.6,
       photos: [],
       courts: [
         { id: 4, name: "Court A", sport: "Tennis", pricePerHour: 2000 },
-        { id: 5, name: "Court B", sport: "Tennis", pricePerHour: 2500 }
+        { id: 5, name: "Court B", sport: "Tennis", pricePerHour: 2500 },
       ],
       minPrice: 2000,
       maxPrice: 2500,
-      sports: ["Tennis"]
+      sports: ["Tennis"],
     },
     {
       id: 3,
       name: "Multi-Sport Hub",
-      description: "Complete sports facility with badminton, basketball, and volleyball courts",
+      description:
+        "Complete sports facility with badminton, basketball, and volleyball courts",
       address: "789 Games Road, Powai",
       city: "Mumbai",
       rating: 4.4,
       photos: [],
       courts: [
         { id: 6, name: "Badminton 1", sport: "Badminton", pricePerHour: 1000 },
-        { id: 7, name: "Basketball Court", sport: "Basketball", pricePerHour: 1500 },
-        { id: 8, name: "Volleyball Court", sport: "Volleyball", pricePerHour: 1200 }
+        {
+          id: 7,
+          name: "Basketball Court",
+          sport: "Basketball",
+          pricePerHour: 1500,
+        },
+        {
+          id: 8,
+          name: "Volleyball Court",
+          sport: "Volleyball",
+          pricePerHour: 1200,
+        },
       ],
       minPrice: 1000,
       maxPrice: 1500,
-      sports: ["Badminton", "Basketball", "Volleyball"]
+      sports: ["Badminton", "Basketball", "Volleyball"],
     },
     {
       id: 4,
       name: "Football Ground Central",
-      description: "Full-sized football ground with synthetic turf and floodlights",
+      description:
+        "Full-sized football ground with synthetic turf and floodlights",
       address: "321 Field Road, Malad",
       city: "Mumbai",
       rating: 4.2,
       photos: [],
       courts: [
-        { id: 9, name: "Main Field", sport: "Football", pricePerHour: 3000 }
+        { id: 9, name: "Main Field", sport: "Football", pricePerHour: 3000 },
       ],
       minPrice: 3000,
       maxPrice: 3000,
-      sports: ["Football"]
+      sports: ["Football"],
     },
     {
       id: 5,
       name: "Cricket Academy",
-      description: "Professional cricket nets and practice facilities with coaching",
+      description:
+        "Professional cricket nets and practice facilities with coaching",
       address: "654 Cricket Lane, Thane",
       city: "Thane",
       rating: 4.7,
@@ -136,28 +151,29 @@ export default function VenuesPage() {
       courts: [
         { id: 10, name: "Net 1", sport: "Cricket", pricePerHour: 800 },
         { id: 11, name: "Net 2", sport: "Cricket", pricePerHour: 800 },
-        { id: 12, name: "Net 3", sport: "Cricket", pricePerHour: 800 }
+        { id: 12, name: "Net 3", sport: "Cricket", pricePerHour: 800 },
       ],
       minPrice: 800,
       maxPrice: 800,
-      sports: ["Cricket"]
+      sports: ["Cricket"],
     },
     {
       id: 6,
       name: "Table Tennis Center",
-      description: "Indoor table tennis facility with 8 tables and air conditioning",
+      description:
+        "Indoor table tennis facility with 8 tables and air conditioning",
       address: "987 Ping Pong Street, Borivali",
       city: "Mumbai",
       rating: 4.1,
       photos: [],
       courts: [
         { id: 13, name: "Table 1", sport: "Table Tennis", pricePerHour: 600 },
-        { id: 14, name: "Table 2", sport: "Table Tennis", pricePerHour: 600 }
+        { id: 14, name: "Table 2", sport: "Table Tennis", pricePerHour: 600 },
       ],
       minPrice: 600,
       maxPrice: 600,
-      sports: ["Table Tennis"]
-    }
+      sports: ["Table Tennis"],
+    },
   ];
 
   useEffect(() => {
@@ -170,33 +186,49 @@ export default function VenuesPage() {
   }, []);
 
   // Filter venues based on current filters
-  const filteredVenues = venues.filter(venue => {
-    const matchesSearch = filters.search === "" || 
+  const filteredVenues = venues.filter((venue) => {
+    const matchesSearch =
+      filters.search === "" ||
       venue.name.toLowerCase().includes(filters.search.toLowerCase()) ||
       venue.description.toLowerCase().includes(filters.search.toLowerCase()) ||
       venue.city.toLowerCase().includes(filters.search.toLowerCase());
 
-    const matchesSport = filters.sport === "" || 
-      venue.sports.some(sport => sport.toLowerCase() === filters.sport.toLowerCase());
+    const matchesSport =
+      filters.sport === "" ||
+      venue.sports.some(
+        (sport) => sport.toLowerCase() === filters.sport.toLowerCase()
+      );
 
-    const matchesPrice = venue.minPrice >= filters.minPrice && venue.maxPrice <= filters.maxPrice;
+    const matchesPrice =
+      venue.minPrice >= filters.minPrice && venue.maxPrice <= filters.maxPrice;
 
-    const matchesCity = filters.city === "" || 
+    const matchesCity =
+      filters.city === "" ||
       venue.city.toLowerCase().includes(filters.city.toLowerCase());
 
-    const matchesRating = filters.rating === 0 || 
+    const matchesRating =
+      filters.rating === 0 ||
       (venue.rating !== null && venue.rating >= filters.rating);
 
-    return matchesSearch && matchesSport && matchesPrice && matchesCity && matchesRating;
+    return (
+      matchesSearch &&
+      matchesSport &&
+      matchesPrice &&
+      matchesCity &&
+      matchesRating
+    );
   });
 
   // Pagination
   const totalPages = Math.ceil(filteredVenues.length / venuesPerPage);
   const startIndex = (currentPage - 1) * venuesPerPage;
-  const paginatedVenues = filteredVenues.slice(startIndex, startIndex + venuesPerPage);
+  const paginatedVenues = filteredVenues.slice(
+    startIndex,
+    startIndex + venuesPerPage
+  );
 
   const handleFilterChange = (key: keyof Filters, value: string | number) => {
-    setFilters(prev => ({ ...prev, [key]: value }));
+    setFilters((prev) => ({ ...prev, [key]: value }));
     setCurrentPage(1); // Reset to first page when filters change
   };
 
@@ -207,13 +239,13 @@ export default function VenuesPage() {
       minPrice: 0,
       maxPrice: 10000,
       city: "",
-      rating: 0
+      rating: 0,
     });
     setCurrentPage(1);
   };
 
-  const uniqueCities = [...new Set(venues.map(venue => venue.city))];
-  const uniqueSports = [...new Set(venues.flatMap(venue => venue.sports))];
+  const uniqueCities = [...new Set(venues.map((venue) => venue.city))];
+  const uniqueSports = [...new Set(venues.flatMap((venue) => venue.sports))];
 
   if (isLoading) {
     return (
@@ -267,12 +299,16 @@ export default function VenuesPage() {
                   </label>
                   <select
                     value={filters.sport}
-                    onChange={(e) => handleFilterChange("sport", e.target.value)}
+                    onChange={(e) =>
+                      handleFilterChange("sport", e.target.value)
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                   >
                     <option value="">All Sports</option>
-                    {uniqueSports.map(sport => (
-                      <option key={sport} value={sport}>{sport}</option>
+                    {uniqueSports.map((sport) => (
+                      <option key={sport} value={sport}>
+                        {sport}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -287,8 +323,10 @@ export default function VenuesPage() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                   >
                     <option value="">All Cities</option>
-                    {uniqueCities.map(city => (
-                      <option key={city} value={city}>{city}</option>
+                    {uniqueCities.map((city) => (
+                      <option key={city} value={city}>
+                        {city}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -299,7 +337,9 @@ export default function VenuesPage() {
                   </label>
                   <select
                     value={filters.rating}
-                    onChange={(e) => handleFilterChange("rating", Number(e.target.value))}
+                    onChange={(e) =>
+                      handleFilterChange("rating", Number(e.target.value))
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                   >
                     <option value={0}>Any Rating</option>
@@ -318,14 +358,24 @@ export default function VenuesPage() {
                       type="number"
                       placeholder="Min"
                       value={filters.minPrice || ""}
-                      onChange={(e) => handleFilterChange("minPrice", Number(e.target.value) || 0)}
+                      onChange={(e) =>
+                        handleFilterChange(
+                          "minPrice",
+                          Number(e.target.value) || 0
+                        )
+                      }
                       className="w-full px-2 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     />
                     <input
                       type="number"
                       placeholder="Max"
                       value={filters.maxPrice || ""}
-                      onChange={(e) => handleFilterChange("maxPrice", Number(e.target.value) || 10000)}
+                      onChange={(e) =>
+                        handleFilterChange(
+                          "maxPrice",
+                          Number(e.target.value) || 10000
+                        )
+                      }
                       className="w-full px-2 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     />
                   </div>
@@ -349,9 +399,9 @@ export default function VenuesPage() {
             <span>
               Showing {paginatedVenues.length} of {filteredVenues.length} venues
             </span>
-            {Object.values(filters).some(value => value !== "" && value !== 0) && (
-              <span>Filters applied</span>
-            )}
+            {Object.values(filters).some(
+              (value) => value !== "" && value !== 0
+            ) && <span>Filters applied</span>}
           </div>
         </div>
 
@@ -359,7 +409,9 @@ export default function VenuesPage() {
         {paginatedVenues.length === 0 ? (
           <div className="text-center py-12">
             <BuildingOfficeIcon className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-2 text-sm font-semibold text-gray-900">No venues found</h3>
+            <h3 className="mt-2 text-sm font-semibold text-gray-900">
+              No venues found
+            </h3>
             <p className="mt-1 text-sm text-gray-500">
               Try adjusting your search criteria or clearing filters
             </p>
@@ -376,12 +428,15 @@ export default function VenuesPage() {
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
               {paginatedVenues.map((venue) => (
-                <div key={venue.id} className="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-shadow">
+                <div
+                  key={venue.id}
+                  className="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-shadow"
+                >
                   {/* Venue Image Placeholder */}
                   <div className="h-48 bg-gradient-to-br from-primary-100 to-primary-200 flex items-center justify-center">
                     <BuildingOfficeIcon className="w-16 h-16 text-primary-600" />
                   </div>
-                  
+
                   <div className="p-6">
                     {/* Venue Header */}
                     <div className="flex justify-between items-start mb-3">
@@ -391,13 +446,17 @@ export default function VenuesPage() {
                       {venue.rating && (
                         <div className="flex items-center ml-2">
                           <StarIcon className="w-4 h-4 text-yellow-400 fill-current" />
-                          <span className="text-sm text-gray-600 ml-1">{venue.rating}</span>
+                          <span className="text-sm text-gray-600 ml-1">
+                            {venue.rating}
+                          </span>
                         </div>
                       )}
                     </div>
 
-                    <p className="text-sm text-gray-600 mb-3 line-clamp-2">{venue.description}</p>
-                    
+                    <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+                      {venue.description}
+                    </p>
+
                     <div className="flex items-center text-sm text-gray-500 mb-3">
                       <MapPinIcon className="w-4 h-4 mr-1 flex-shrink-0" />
                       <span className="line-clamp-1">{venue.address}</span>
@@ -421,11 +480,12 @@ export default function VenuesPage() {
                         <CurrencyDollarIcon className="w-4 h-4 text-gray-400 mr-1" />
                         <span className="font-medium text-gray-900">
                           ₹{venue.minPrice}
-                          {venue.minPrice !== venue.maxPrice && ` - ₹${venue.maxPrice}`}
+                          {venue.minPrice !== venue.maxPrice &&
+                            ` - ₹${venue.maxPrice}`}
                         </span>
                         <span className="text-gray-500 ml-1">/hr</span>
                       </div>
-                      
+
                       <Link
                         href={`/venues/${venue.id}`}
                         className="inline-flex items-center px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition-colors"
@@ -443,29 +503,35 @@ export default function VenuesPage() {
               <div className="flex justify-center">
                 <nav className="flex items-center space-x-2">
                   <button
-                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    onClick={() =>
+                      setCurrentPage((prev) => Math.max(1, prev - 1))
+                    }
                     disabled={currentPage === 1}
                     className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Previous
                   </button>
-                  
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                    <button
-                      key={page}
-                      onClick={() => setCurrentPage(page)}
-                      className={`px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
-                        page === currentPage
-                          ? "bg-primary-600 text-white"
-                          : "text-gray-700 bg-white border border-gray-300 hover:bg-gray-50"
-                      }`}
-                    >
-                      {page}
-                    </button>
-                  ))}
-                  
+
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                    (page) => (
+                      <button
+                        key={page}
+                        onClick={() => setCurrentPage(page)}
+                        className={`px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                          page === currentPage
+                            ? "bg-primary-600 text-white"
+                            : "text-gray-700 bg-white border border-gray-300 hover:bg-gray-50"
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    )
+                  )}
+
                   <button
-                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    onClick={() =>
+                      setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                    }
                     disabled={currentPage === totalPages}
                     className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
