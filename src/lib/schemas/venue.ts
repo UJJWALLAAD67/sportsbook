@@ -7,17 +7,17 @@ export const venueSchema = z.object({
   address: z.string().min(5, "Address is required"),
   city: z.string().min(1, "City is required"),
   state: z.string().optional(),
-  country: z.string().default("India"),
+  country: z.string().min(1, "Country is required"),
   latitude: z.number().optional(), // Added here
   longitude: z.number().optional(), // Added here
-  amenities: z.array(z.string()).default([]),
+  amenities: z.array(z.string()),
   courts: z
     .array(
       z.object({
         name: z.string().min(1, "Court name is required"),
         sport: z.string().min(1, "Sport type is required"),
         pricePerHour: z.number().min(1, "Price per hour is required"),
-        currency: z.string().default("INR"),
+        currency: z.string().min(1, "Currency is required"),
         openTime: z.number().min(0).max(23),
         closeTime: z.number().min(1).max(24),
       })

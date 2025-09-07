@@ -10,29 +10,67 @@ import {
   CurrencyDollarIcon,
   UserIcon,
   BuildingOfficeIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
+  MapPinIcon,
   ExclamationTriangleIcon,
   CheckCircleIcon
 } from "@heroicons/react/24/outline";
+// Native JavaScript date utility functions
+const formatDate = (date: Date, formatType: string): string => {
+  if (formatType === "MMM d, yyyy") {
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  }
+  if (formatType === "h:mm a") {
+    return date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+  }
+  if (formatType === "yyyy-MM-dd") {
+    return date.toISOString().split('T')[0];
+  }
+  if (formatType === "EEE") {
+    return date.toLocaleDateString("en-US", { weekday: "short" });
+  }
+  if (formatType === "d") {
+    return date.getDate().toString();
+  }
+  if (formatType === "MMM") {
+    return date.toLocaleDateString("en-US", { month: "short" });
+  }
+  if (formatType === "EEEE, MMMM d, yyyy") {
+    return date.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+  }
+  return date.toString();
+};
+
+const addDays = (date: Date, days: number): Date => {
+  const result = new Date(date.getTime());
+  result.setDate(result.getDate() + days);
+  return result;
+};
+
+const isSameDay = (date1: Date, date2: Date): boolean => {
+  return date1.toDateString() === date2.toDateString();
+};
+
+const isToday = (date: Date): boolean => {
+  return date.toDateString() === new Date().toDateString();
+};
+
+const isBefore = (date1: Date, date2: Date): boolean => {
+  return date1 < date2;
+};
+
+const startOfDay = (date: Date): Date => {
+  const result = new Date(date);
+  result.setHours(0, 0, 0, 0);
+  return result;
+};
 
 interface TimeSlot {
-  id: string;
-  time: string;
   hour: number;
+  time: string;
   available: boolean;
+  isPast: boolean;
+  hasConflict: boolean;
   price: number;
-  conflictReason?: string;
-}
-
-interface BookingData {
-  venueId: number;
-  courtId: number;
-  date: string;
-  timeSlot: string;
-  duration: number; // in hours
-  totalPrice: number;
-  userNotes?: string;
 }
 
 interface Venue {
@@ -40,6 +78,7 @@ interface Venue {
   name: string;
   address: string;
   city: string;
+  state: string;
 }
 
 interface Court {
@@ -49,6 +88,12 @@ interface Court {
   pricePerHour: number;
   openTime: number;
   closeTime: number;
+}
+
+interface Booking {
+  startTime: string;
+  endTime: string;
+  status: string;
 }
 
 export default function BookingPage() {
@@ -61,179 +106,165 @@ export default function BookingPage() {
 
   const [venue, setVenue] = useState<Venue | null>(null);
   const [court, setCourt] = useState<Court | null>(null);
-  const [selectedDate, setSelectedDate] = useState<string>("");
-  const [selectedTimeSlot, setSelectedTimeSlot] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [selectedTimeSlots, setSelectedTimeSlots] = useState<number[]>([]);
   const [duration, setDuration] = useState<number>(1);
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
+  const [availableSlots, setAvailableSlots] = useState<TimeSlot[]>([]);
+  const [existingBookings, setExistingBookings] = useState<Booking[]>([]);
   const [userNotes, setUserNotes] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
   const [isBooking, setIsBooking] = useState(false);
-  const [bookingError, setBookingError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [bookingSuccess, setBookingSuccess] = useState(false);
 
-  // Mock data - replace with actual API calls
-  const mockVenue: Venue = {
-    id: 1,
-    name: "Elite Sports Complex",
-    address: "123 Sports Street, Andheri West",
-    city: "Mumbai"
-  };
-
-  const mockCourt: Court = {
-    id: 1,
-    name: "Court 1",
-    sport: "Badminton",
-    pricePerHour: 1200,
-    openTime: 6,
-    closeTime: 22
-  };
-
-  // Generate date options (next 14 days)
-  const generateDateOptions = () => {
-    const dates = [];
-    const today = new Date();
-    for (let i = 0; i < 14; i++) {
-      const date = new Date(today);
-      date.setDate(today.getDate() + i);
-      dates.push({
-        value: date.toISOString().split('T')[0],
-        label: i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : date.toLocaleDateString('en-US', { 
-          weekday: 'short', 
-          month: 'short', 
-          day: 'numeric' 
-        })
-      });
-    }
-    return dates;
-  };
-
-  const generateTimeSlots = (date: string, openTime: number, closeTime: number) => {
-    const slots: TimeSlot[] = [];
-    const selectedDateObj = new Date(date);
-    const now = new Date();
-    
-    for (let hour = openTime; hour < closeTime; hour++) {
-      const slotDate = new Date(selectedDateObj);
-      slotDate.setHours(hour, 0, 0, 0);
-      
-      // Check if slot is in the past
-      const isPast = slotDate < now;
-      
-      // Mock availability check - in real app, this would be an API call
-      const isBooked = Math.random() < 0.3; // 30% chance of being booked
-      
-      const available = !isPast && !isBooked;
-      
-      slots.push({
-        id: `${date}-${hour}`,
-        time: `${hour.toString().padStart(2, '0')}:00`,
-        hour,
-        available,
-        price: mockCourt.pricePerHour,
-        conflictReason: isPast ? 'Past time slot' : isBooked ? 'Already booked' : undefined
-      });
-    }
-    
-    return slots;
-  };
+  // Generate next 7 days for date selection
+  const availableDates = Array.from({ length: 7 }, (_, i) => addDays(new Date(), i));
 
   useEffect(() => {
-    if (status === "loading") return;
-
-    if (!session) {
+    if (status === "unauthenticated") {
       router.push("/auth/login");
       return;
     }
 
-    // Set initial date to today
-    const today = new Date().toISOString().split('T')[0];
-    setSelectedDate(today);
-
-    // Load venue and court data
-    setIsLoading(true);
-    setTimeout(() => {
-      if (venueId === 1 && courtId === 1) {
-        setVenue(mockVenue);
-        setCourt(mockCourt);
-      }
-      setIsLoading(false);
-    }, 500);
-  }, [session, status, router, venueId, courtId]);
+    if (status === "authenticated") {
+      fetchCourtDetails();
+    }
+  }, [status, venueId, courtId]);
 
   useEffect(() => {
-    if (selectedDate && court) {
-      const slots = generateTimeSlots(selectedDate, court.openTime, court.closeTime);
-      setTimeSlots(slots);
-      setSelectedTimeSlot(null); // Reset selected time when date changes
+    if (court && selectedDate) {
+      fetchAvailableSlots();
     }
-  }, [selectedDate, court]);
+  }, [court, selectedDate]);
 
-  const handleTimeSlotSelect = (slotId: string) => {
-    const slot = timeSlots.find(s => s.id === slotId);
-    if (slot && slot.available) {
-      setSelectedTimeSlot(slotId);
-      setBookingError(null);
+  const fetchCourtDetails = async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch(`/api/venues/${venueId}`);
+      
+      if (response.ok) {
+        const venueData = await response.json();
+        setVenue({
+          id: venueData.id,
+          name: venueData.name,
+          address: venueData.address,
+          city: venueData.city,
+          state: venueData.state,
+        });
+
+        const courtData = venueData.courts.find((c: any) => c.id === courtId);
+        if (courtData) {
+          setCourt(courtData);
+        } else {
+          setError("Court not found");
+        }
+      } else {
+        setError("Failed to load court details");
+      }
+    } catch (error) {
+      console.error("Error fetching court details:", error);
+      setError("Failed to load court details");
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const calculateTotalPrice = () => {
-    if (!court || !selectedTimeSlot) return 0;
-    return court.pricePerHour * duration;
+  const fetchAvailableSlots = async () => {
+    if (!court) return;
+
+    try {
+      const dateStr = formatDate(selectedDate, 'yyyy-MM-dd');
+      const response = await fetch(`/api/bookings/availability?courtId=${courtId}&date=${dateStr}`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        setExistingBookings(data.bookings || []);
+        setAvailableSlots(data.timeSlots || []);
+        setTimeSlots(data.timeSlots || []);
+      } else {
+        console.error("Failed to fetch availability");
+        setAvailableSlots([]);
+        setTimeSlots([]);
+      }
+    } catch (error) {
+      console.error("Error fetching availability:", error);
+      setAvailableSlots([]);
+      setTimeSlots([]);
+    }
+  };
+
+  const handleTimeSlotSelect = (hour: number) => {
+    const slot = availableSlots.find(s => s.hour === hour);
+    if (!slot || !slot.available) return;
+
+    // For single slot selection with duration
+    setSelectedTimeSlots([hour]);
+  };
+
+  const isSlotSelected = (hour: number) => {
+    if (selectedTimeSlots.length === 0) return false;
+    const startHour = selectedTimeSlots[0];
+    return hour >= startHour && hour < startHour + duration;
+  };
+
+  const isSlotAvailable = (hour: number) => {
+    if (selectedTimeSlots.length === 0) return true;
+    
+    const startHour = selectedTimeSlots[0];
+    const endHour = startHour + duration;
+    
+    // Check if all slots in the duration are available
+    for (let h = startHour; h < endHour; h++) {
+      const slot = availableSlots.find(s => s.hour === h);
+      if (!slot || !slot.available) return false;
+    }
+    
+    return true;
+  };
+
+  const getTotalPrice = () => {
+    if (!court || selectedTimeSlots.length === 0) return 0;
+    return Math.round((court.pricePerHour * duration) / 100);
   };
 
   const handleBooking = async () => {
-    if (!venue || !court || !selectedTimeSlot || !session) return;
+    if (!court || !venue || selectedTimeSlots.length === 0) return;
 
     setIsBooking(true);
-    setBookingError(null);
-
     try {
-      // Create booking data with idempotency key
-      const bookingData: BookingData = {
-        venueId: venue.id,
-        courtId: court.id,
-        date: selectedDate,
-        timeSlot: selectedTimeSlot,
-        duration,
-        totalPrice: calculateTotalPrice(),
-        userNotes: userNotes.trim() || undefined
+      const startHour = selectedTimeSlots[0];
+      const startTime = new Date(selectedDate);
+      startTime.setHours(startHour, 0, 0, 0);
+      
+      const endTime = new Date(startTime);
+      endTime.setHours(startHour + duration, 0, 0, 0);
+
+      const bookingData = {
+        courtId,
+        startTime: startTime.toISOString(),
+        endTime: endTime.toISOString(),
+        totalAmount: court.pricePerHour * duration,
       };
 
-      // Add idempotency key for duplicate prevention
-      const idempotencyKey = `${session.user.id}-${Date.now()}-${Math.random()}`;
-
-      // Simulate API call with concurrency control
       const response = await fetch('/api/bookings', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Idempotency-Key': idempotencyKey
         },
-        body: JSON.stringify(bookingData)
+        body: JSON.stringify(bookingData),
       });
 
       if (response.ok) {
-        setBookingSuccess(true);
-        // Redirect to bookings page after a short delay
-        setTimeout(() => {
-          router.push('/bookings?success=booking-created');
-        }, 2000);
+        const booking = await response.json();
+        router.push(`/bookings/${booking.id}`);
       } else {
-        const error = await response.json();
-        
-        if (response.status === 409) {
-          setBookingError('This time slot has been booked by another user. Please select a different time.');
-          // Refresh time slots to show updated availability
-          const slots = generateTimeSlots(selectedDate, court.openTime, court.closeTime);
-          setTimeSlots(slots);
-          setSelectedTimeSlot(null);
-        } else {
-          setBookingError(error.message || 'Booking failed. Please try again.');
-        }
+        const errorData = await response.json();
+        setError(errorData.error || "Failed to create booking");
       }
     } catch (error) {
-      console.error('Booking error:', error);
-      setBookingError('Network error. Please check your connection and try again.');
+      console.error("Error creating booking:", error);
+      setError("Failed to create booking");
     } finally {
       setIsBooking(false);
     }
@@ -278,10 +309,10 @@ export default function BookingPage() {
               <h3 className="font-medium text-gray-900 mb-2">Booking Details:</h3>
               <p className="text-sm text-gray-600">{venue.name} - {court.name}</p>
               <p className="text-sm text-gray-600">
-                {new Date(selectedDate).toLocaleDateString()} at {timeSlots.find(s => s.id === selectedTimeSlot)?.time}
+                {formatDate(selectedDate, 'EEEE, MMMM d, yyyy')} at {selectedTimeSlots.length > 0 ? `${selectedTimeSlots[0].toString().padStart(2, '0')}:00` : ''}
               </p>
               <p className="text-sm text-gray-600">Duration: {duration} hour(s)</p>
-              <p className="text-sm font-medium text-gray-900">Total: ₹{calculateTotalPrice()}</p>
+              <p className="text-sm font-medium text-gray-900">Total: ₹{getTotalPrice()}</p>
             </div>
             <div className="flex gap-3">
               <Link
@@ -356,20 +387,36 @@ export default function BookingPage() {
                 Select Date
               </h3>
               
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {generateDateOptions().map((date) => (
-                  <button
-                    key={date.value}
-                    onClick={() => setSelectedDate(date.value)}
-                    className={`p-3 rounded-lg border text-sm font-medium transition-colors ${
-                      selectedDate === date.value
-                        ? 'border-primary-500 bg-primary-50 text-primary-700'
-                        : 'border-gray-200 hover:border-gray-300 text-gray-700'
-                    }`}
-                  >
-                    {date.label}
-                  </button>
-                ))}
+              <div className="grid grid-cols-7 gap-2">
+                {availableDates.map((date, index) => {
+                  const isSelected = isSameDay(date, selectedDate);
+                  const isPast = isBefore(date, startOfDay(new Date()));
+                  
+                  return (
+                    <button
+                      key={index}
+                      onClick={() => !isPast && setSelectedDate(date)}
+                      disabled={isPast}
+                      className={`p-3 text-center rounded-lg border transition-colors ${
+                        isPast
+                          ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                          : isSelected
+                          ? "bg-primary-600 text-white border-primary-600"
+                          : "border-gray-300 hover:border-primary-300 hover:bg-primary-50"
+                      }`}
+                    >
+                      <div className="text-xs font-medium">
+                        {formatDate(date, 'EEE')}
+                      </div>
+                      <div className="text-lg font-bold">
+                        {formatDate(date, 'd')}
+                      </div>
+                      <div className="text-xs">
+                        {formatDate(date, 'MMM')}
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -380,25 +427,38 @@ export default function BookingPage() {
                 Select Time Slot
               </h3>
 
-              <div className="grid grid-cols-3 md:grid-cols-5 gap-3 mb-4">
-                {timeSlots.map((slot) => (
-                  <button
-                    key={slot.id}
-                    onClick={() => handleTimeSlotSelect(slot.id)}
-                    disabled={!slot.available}
-                    className={`p-3 rounded-lg border text-sm font-medium transition-colors ${
-                      selectedTimeSlot === slot.id
-                        ? 'border-primary-500 bg-primary-50 text-primary-700'
-                        : slot.available
-                        ? 'border-gray-200 hover:border-gray-300 text-gray-700'
-                        : 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed'
-                    }`}
-                    title={slot.conflictReason || ''}
-                  >
-                    {slot.time}
-                  </button>
-                ))}
+              <div className="grid grid-cols-4 sm:grid-cols-6 gap-3">
+                {availableSlots.map((slot) => {
+                  const isSelected = isSlotSelected(slot.hour);
+                  const canSelect = slot.available && isSlotAvailable(slot.hour);
+                  
+                  return (
+                    <button
+                      key={slot.hour}
+                      onClick={() => handleTimeSlotSelect(slot.hour)}
+                      disabled={!canSelect}
+                      className={`p-3 text-center rounded-lg border transition-colors ${
+                        !canSelect
+                          ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                          : isSelected
+                          ? "bg-primary-600 text-white border-primary-600"
+                          : "border-gray-300 hover:border-primary-300 hover:bg-primary-50"
+                      }`}
+                    >
+                      <div className="font-medium">{slot.time}</div>
+                      <div className="text-xs">
+                        {canSelect ? "Available" : slot.isPast ? "Past" : "Booked"}
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
+
+              {availableSlots.length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  <p>No time slots available for the selected date.</p>
+                </div>
+              )}
 
               <div className="flex items-center text-sm text-gray-600">
                 <div className="flex items-center mr-6">
@@ -466,14 +526,14 @@ export default function BookingPage() {
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Date:</span>
                     <span className="font-medium">
-                      {selectedDate ? new Date(selectedDate).toLocaleDateString() : '-'}
+                      {formatDate(selectedDate, 'EEEE, MMMM d, yyyy')}
                     </span>
                   </div>
                   
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Time:</span>
                     <span className="font-medium">
-                      {selectedTimeSlot ? timeSlots.find(s => s.id === selectedTimeSlot)?.time : '-'}
+                      {selectedTimeSlots.length > 0 ? `${selectedTimeSlots[0].toString().padStart(2, '0')}:00 - ${(selectedTimeSlots[0] + duration).toString().padStart(2, '0')}:00` : '-'}
                     </span>
                   </div>
                   
@@ -484,32 +544,36 @@ export default function BookingPage() {
                   
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Price per hour:</span>
-                    <span className="font-medium">₹{court.pricePerHour}</span>
+                    <span className="font-medium">₹{Math.round(court.pricePerHour / 100)}</span>
                   </div>
                   
                   <div className="border-t border-gray-200 pt-3">
                     <div className="flex justify-between">
                       <span className="font-semibold text-gray-900">Total:</span>
-                      <span className="font-semibold text-gray-900">₹{calculateTotalPrice()}</span>
+                      <span className="font-semibold text-gray-900">₹{getTotalPrice()}</span>
                     </div>
                   </div>
                 </div>
 
-                {bookingError && (
+                {error && (
                   <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
                     <div className="flex items-center">
                       <ExclamationTriangleIcon className="w-5 h-5 text-red-500 mr-2" />
-                      <span className="text-sm text-red-700">{bookingError}</span>
+                      <span className="text-sm text-red-700">{error}</span>
                     </div>
                   </div>
                 )}
 
                 <button
                   onClick={handleBooking}
-                  disabled={!selectedTimeSlot || isBooking}
-                  className="w-full mt-6 bg-primary-600 text-white py-3 px-4 rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+                  disabled={selectedTimeSlots.length === 0 || isBooking}
+                  className={`w-full mt-6 py-3 px-4 rounded-lg font-medium transition-colors ${
+                    selectedTimeSlots.length === 0 || isBooking
+                      ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                      : "bg-primary-600 text-white hover:bg-primary-700"
+                  }`}
                 >
-                  {isBooking ? 'Processing...' : 'Confirm Booking'}
+                  {isBooking ? "Processing..." : "Confirm Booking"}
                 </button>
 
                 <p className="text-xs text-gray-500 mt-3 text-center">

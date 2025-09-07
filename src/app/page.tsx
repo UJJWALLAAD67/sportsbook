@@ -7,7 +7,7 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
 } from "@heroicons/react/24/outline";
-import { useState, useEffect, useRef } from "react"; // RE-INTRODUCED: useState & useEffect
+import { useState, useEffect, useRef } from "react";
 import { useSwipeable } from "react-swipeable"; // RE-INTRODUCED: Swiper functionality
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -33,53 +33,71 @@ const banners = [
   },
 ];
 
-// Data for the sections below the hero (no changes here)
-const featuredVenues = [
-  {
-    id: 1,
-    name: "SRS Badminton",
-    image: "/venues/srs-badminton.jpg",
-    rating: 4.9,
-    reviews: 86,
-    location: "Vastrapur, Ahd",
-    tags: ["Indoor", "Top Rated", "Budget"],
-  },
-  {
-    id: 2,
-    name: "The Cricket Dome",
-    image: "/venues/cricket-dome.jpg",
-    rating: 4.8,
-    reviews: 112,
-    location: "Bodakdev, Ahd",
-    tags: ["Indoor", "Night Lights"],
-  },
-  {
-    id: 3,
-    name: "SmashZone Tennis",
-    image: "/venues/smash-zone.jpg",
-    rating: 4.7,
-    reviews: 74,
-    location: "Navrangpura, Ahd",
-    tags: ["Clay Court", "Coaching"],
-  },
-];
+// Interfaces for API data
+interface FeaturedVenue {
+  id: number;
+  name: string;
+  slug: string;
+  description: string;
+  address: string;
+  city: string;
+  state: string;
+  rating: number;
+  reviewCount: number;
+  sports: string[];
+  minPricePerHour: number;
+  currency: string;
+  amenities: string[];
+  photos: string[];
+  tags: string[];
+}
 
-const popularSports = [
-  { name: "Badminton", image: "/sports/badminton.jpg" },
-  { name: "Football", image: "/sports/football.jpg" },
-  { name: "Cricket", image: "/sports/cricket.jpg" },
-  { name: "Tennis", image: "/sports/tennis.jpg" },
-];
+interface PopularSport {
+  name: string;
+  venueCount: number;
+  image: string;
+}
 
 export default function Home() {
-  // RE-INTRODUCED: State and logic for the carousel
+  // State for carousel and data
   const [activeBanner, setActiveBanner] = useState(0);
+  const [featuredVenues, setFeaturedVenues] = useState<FeaturedVenue[]>([]);
+  const [popularSports, setPopularSports] = useState<PopularSport[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const nextBanner = () =>
     setActiveBanner((prev) => (prev + 1) % banners.length);
   const prevBanner = () =>
     setActiveBanner((prev) => (prev - 1 + banners.length) % banners.length);
 
-  // RE-INTRODUCED: Autoplay every 5 seconds
+  // Fetch data on component mount
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [venuesResponse, sportsResponse] = await Promise.all([
+          fetch('/api/venues/featured'),
+          fetch('/api/sports/popular')
+        ]);
+
+        if (venuesResponse.ok) {
+          const venuesData = await venuesResponse.json();
+          setFeaturedVenues(venuesData);
+        }
+
+        if (sportsResponse.ok) {
+          const sportsData = await sportsResponse.json();
+          setPopularSports(sportsData);
+        }
+      } catch (error) {
+        console.error('Failed to fetch home page data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  // Autoplay every 5 seconds
   useEffect(() => {
     const timer = setInterval(nextBanner, 5000);
     return () => clearInterval(timer);
@@ -94,8 +112,8 @@ export default function Home() {
   });
 
   // Logic for the venue scroller (no changes)
-  const scrollContainerRef = useRef(null);
-  const scroll = (direction) => {
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const scroll = (direction: "left" | "right") => {
     if (scrollContainerRef.current) {
       const scrollAmount = direction === "left" ? -300 : 300;
       scrollContainerRef.current.scrollBy({
@@ -207,42 +225,89 @@ export default function Home() {
               ref={scrollContainerRef}
               className="flex space-x-6 overflow-x-auto pb-4 scrollbar-hide"
             >
-              {featuredVenues.map((venue) => (
-                <div
-                  key={venue.id}
-                  className="flex-shrink-0 w-[280px] bg-white rounded-lg shadow-md overflow-hidden transform hover:-translate-y-1 transition-transform duration-300"
-                >
-                  <img
-                    src={venue.image}
-                    alt={venue.name}
-                    className="w-full h-40 object-cover"
-                  />
-                  <div className="p-4">
-                    <h3 className="font-bold text-lg mb-2">{venue.name}</h3>
-                    <div className="flex items-center text-sm text-gray-600 mb-2">
-                      <StarIcon className="w-5 h-5 text-yellow-500 mr-1" />
-                      <span className="font-semibold text-gray-800">
-                        {venue.rating}
-                      </span>
-                      <span className="ml-1">({venue.reviews})</span>
-                    </div>
-                    <div className="flex items-center text-sm text-gray-600 mb-4">
-                      <MapPinIcon className="w-5 h-5 mr-1" />
-                      <span>{venue.location}</span>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {venue.tags.map((tag) => (
-                        <span
-                          key={tag}
-                          className="text-xs font-semibold bg-gray-100 text-gray-700 px-2 py-1 rounded-full"
-                        >
-                          {tag}
-                        </span>
-                      ))}
+              {isLoading ? (
+                // Loading skeletons
+                Array.from({ length: 3 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="flex-shrink-0 w-[280px] bg-white rounded-lg shadow-md overflow-hidden animate-pulse"
+                  >
+                    <div className="w-full h-40 bg-gray-300"></div>
+                    <div className="p-4 space-y-3">
+                      <div className="h-6 bg-gray-300 rounded"></div>
+                      <div className="h-4 bg-gray-300 rounded w-3/4"></div>
+                      <div className="h-4 bg-gray-300 rounded w-1/2"></div>
                     </div>
                   </div>
+                ))
+              ) : featuredVenues.length > 0 ? (
+                featuredVenues.map((venue) => (
+                  <Link
+                    key={venue.id}
+                    href={`/venues/${venue.id}`}
+                    className="flex-shrink-0 w-[280px] bg-white rounded-lg shadow-md overflow-hidden transform hover:-translate-y-1 transition-transform duration-300"
+                  >
+                    <div className="relative">
+                      {venue.photos && venue.photos.length > 0 ? (
+                        <img
+                          src={venue.photos[0]}
+                          alt={venue.name}
+                          className="w-full h-40 object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-40 bg-gray-200 flex items-center justify-center">
+                          <span className="text-gray-500">No Image</span>
+                        </div>
+                      )}
+                      {venue.sports.length > 0 && (
+                        <div className="absolute top-2 left-2">
+                          <span className="bg-green-600 text-white text-xs px-2 py-1 rounded-full">
+                            {venue.sports[0]}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-4">
+                      <h3 className="font-bold text-lg mb-2 line-clamp-1">{venue.name}</h3>
+                      <div className="flex items-center text-sm text-gray-600 mb-2">
+                        <StarIcon className="w-5 h-5 text-yellow-500 mr-1" />
+                        <span className="font-semibold text-gray-800">
+                          {venue.rating > 0 ? venue.rating.toFixed(1) : 'New'}
+                        </span>
+                        <span className="ml-1">({venue.reviewCount})</span>
+                      </div>
+                      <div className="flex items-center text-sm text-gray-600 mb-2">
+                        <MapPinIcon className="w-5 h-5 mr-1" />
+                        <span className="line-clamp-1">{venue.city}, {venue.state}</span>
+                      </div>
+                      <div className="text-sm font-semibold text-green-600 mb-3">
+                        From ₹{Math.round(venue.minPricePerHour / 100)}/hour
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {venue.tags.slice(0, 2).map((tag) => (
+                          <span
+                            key={tag}
+                            className="text-xs font-semibold bg-gray-100 text-gray-700 px-2 py-1 rounded-full"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </Link>
+                ))
+              ) : (
+                // No venues message
+                <div className="flex-shrink-0 w-full text-center py-12">
+                  <p className="text-gray-500">No venues available yet.</p>
+                  <Link
+                    href="/auth/register?role=OWNER"
+                    className="text-green-600 hover:text-green-700 font-medium"
+                  >
+                    Be the first to add your venue!
+                  </Link>
                 </div>
-              ))}
+              )}
             </div>
           </div>
         </div>
@@ -255,22 +320,69 @@ export default function Home() {
             Popular Sports
           </h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
-            {popularSports.map((sport) => (
-              <Link
-                key={sport.name}
-                href={`/venues?sport=${sport.name.toLowerCase()}`}
-                className="group text-center"
-              >
-                <div className="relative w-full aspect-square rounded-lg overflow-hidden mb-4 shadow-sm group-hover:shadow-xl transition-shadow">
-                  <img
-                    src={sport.image}
-                    alt={sport.name}
-                    className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-500"
-                  />
+            {isLoading ? (
+              // Loading skeletons
+              Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="text-center animate-pulse">
+                  <div className="w-full aspect-square rounded-lg bg-gray-300 mb-4"></div>
+                  <div className="h-6 bg-gray-300 rounded"></div>
                 </div>
-                <h3 className="font-semibold text-lg">{sport.name}</h3>
-              </Link>
-            ))}
+              ))
+            ) : popularSports.length > 0 ? (
+              popularSports.map((sport) => (
+                <Link
+                  key={sport.name}
+                  href={`/venues?sport=${sport.name.toLowerCase()}`}
+                  className="group text-center"
+                >
+                  <div className="relative w-full aspect-square rounded-lg overflow-hidden mb-4 shadow-sm group-hover:shadow-xl transition-shadow">
+                    <img
+                      src={sport.image}
+                      alt={sport.name}
+                      className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-500"
+                      onError={(e) => {
+                        // Fallback to placeholder if image fails to load
+                        const target = e.target as HTMLImageElement;
+                        target.src = '/sports/default.jpg';
+                      }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="absolute bottom-2 left-2 text-white text-sm">
+                        {sport.venueCount} venues
+                      </div>
+                    </div>
+                  </div>
+                  <h3 className="font-semibold text-lg">{sport.name}</h3>
+                </Link>
+              ))
+            ) : (
+              // Default sports if no data
+              [
+                { name: "Badminton", image: "/sports/badminton.jpg" },
+                { name: "Football", image: "/sports/football.jpg" },
+                { name: "Cricket", image: "/sports/cricket.jpg" },
+                { name: "Tennis", image: "/sports/tennis.jpg" }
+              ].map((sport) => (
+                <Link
+                  key={sport.name}
+                  href={`/venues?sport=${sport.name.toLowerCase()}`}
+                  className="group text-center"
+                >
+                  <div className="relative w-full aspect-square rounded-lg overflow-hidden mb-4 shadow-sm group-hover:shadow-xl transition-shadow">
+                    <img
+                      src={sport.image}
+                      alt={sport.name}
+                      className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-500"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = '/sports/default.jpg';
+                      }}
+                    />
+                  </div>
+                  <h3 className="font-semibold text-lg">{sport.name}</h3>
+                </Link>
+              ))
+            )}
           </div>
         </div>
       </section>

@@ -1,9 +1,9 @@
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { prisma } from "@/lib/prisma";
 import { BookingStatus } from "@/generated/prisma";
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
     const token = await getToken({ req });
     
@@ -174,7 +174,7 @@ export async function POST(req: Request) {
   }
 }
 
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
   try {
     const token = await getToken({ req });
     

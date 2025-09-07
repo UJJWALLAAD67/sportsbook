@@ -77,7 +77,7 @@ const Navbar: React.FC = () => {
             href="/"
             className="text-2xl font-bold tracking-tight text-gray-900"
           >
-            QUICKCOURT
+           SPORTS BOOK
           </Link>
 
           {/* Center: Location (Mobile) */}

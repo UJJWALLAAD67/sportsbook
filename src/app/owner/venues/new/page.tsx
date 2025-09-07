@@ -43,7 +43,7 @@ export default function NewVenuePage() {
     control,
     handleSubmit,
     formState: { errors },
-  } = useForm<VenueFormData>({
+  } = useForm<z.infer<typeof venueSchema>>({
     resolver: zodResolver(venueSchema),
     defaultValues: {
       country: "India",

@@ -19,34 +19,50 @@ import { StarIcon as StarSolidIcon } from "@heroicons/react/24/solid";
 interface Venue {
   id: number;
   name: string;
+  slug: string;
   description: string;
   address: string;
   city: string;
   state: string;
-  rating: number | null;
-  totalReviews: number;
-  photos: string[];
+  country: string;
+  latitude: number | null;
+  longitude: number | null;
+  rating: number;
+  reviewCount: number;
+  sports: string[];
+  minPrice: number;
+  maxPrice: number;
+  currency: string;
+  operatingHours: {
+    open: number;
+    close: number;
+  };
   amenities: string[];
+  photos: string[];
   courts: Array<{
     id: number;
     name: string;
     sport: string;
     pricePerHour: number;
+    currency: string;
     openTime: number;
     closeTime: number;
   }>;
+  reviews: Array<{
+    id: number;
+    rating: number;
+    comment: string;
+    createdAt: string;
+    user: {
+      name: string;
+      avatar: string | null;
+    };
+  }>;
   owner: {
     name: string;
-    businessName?: string;
+    businessName?: string | null;
+    phone?: string | null;
   };
-}
-
-interface Review {
-  id: number;
-  userName: string;
-  rating: number;
-  comment: string;
-  createdAt: string;
 }
 
 export default function VenueDetailPage() {
@@ -56,70 +72,35 @@ export default function VenueDetailPage() {
   const venueId = parseInt(params.id as string);
 
   const [venue, setVenue] = useState<Venue | null>(null);
-  const [reviews, setReviews] = useState<Review[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedCourt, setSelectedCourt] = useState<number | null>(null);
 
-  // Mock data - replace with actual API call
-  const mockVenue: Venue = {
-    id: 1,
-    name: "Elite Sports Complex",
-    description: "Premier badminton facility with 6 professional courts, air conditioning, and modern amenities. Perfect for both casual games and competitive matches. Our courts feature high-quality wooden flooring and proper lighting for an optimal playing experience.",
-    address: "123 Sports Street, Andheri West",
-    city: "Mumbai",
-    state: "Maharashtra",
-    rating: 4.8,
-    totalReviews: 127,
-    photos: [],
-    amenities: ["Parking", "Changing Rooms", "Lighting", "Air Conditioning", "Shower", "Equipment Rental", "Cafeteria", "Wi-Fi"],
-    courts: [
-      { id: 1, name: "Court 1", sport: "Badminton", pricePerHour: 1200, openTime: 6, closeTime: 22 },
-      { id: 2, name: "Court 2", sport: "Badminton", pricePerHour: 1200, openTime: 6, closeTime: 22 },
-      { id: 3, name: "Court 3", sport: "Badminton", pricePerHour: 1200, openTime: 6, closeTime: 22 },
-      { id: 4, name: "Court 4", sport: "Badminton", pricePerHour: 1200, openTime: 6, closeTime: 22 },
-      { id: 5, name: "Court 5", sport: "Badminton", pricePerHour: 1200, openTime: 6, closeTime: 22 },
-      { id: 6, name: "Court 6", sport: "Badminton", pricePerHour: 1200, openTime: 6, closeTime: 22 }
-    ],
-    owner: {
-      name: "Rajesh Sharma",
-      businessName: "Elite Sports Pvt Ltd"
-    }
-  };
-
-  const mockReviews: Review[] = [
-    {
-      id: 1,
-      userName: "Amit Patel",
-      rating: 5,
-      comment: "Excellent facility with well-maintained courts. The staff is very professional and helpful.",
-      createdAt: "2024-02-15"
-    },
-    {
-      id: 2,
-      userName: "Priya Singh",
-      rating: 4,
-      comment: "Great courts and good amenities. Parking can be a bit challenging during peak hours.",
-      createdAt: "2024-02-10"
-    },
-    {
-      id: 3,
-      userName: "Kiran Kumar",
-      rating: 5,
-      comment: "Perfect for badminton! The courts are well-lit and the AC keeps the temperature comfortable.",
-      createdAt: "2024-02-05"
-    }
-  ];
-
   useEffect(() => {
-    // Simulate API loading
-    setIsLoading(true);
-    setTimeout(() => {
-      if (venueId === 1) {
-        setVenue(mockVenue);
-        setReviews(mockReviews);
+    const fetchVenue = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const response = await fetch(`/api/venues/${venueId}`);
+        if (response.ok) {
+          const venueData = await response.json();
+          setVenue(venueData);
+        } else if (response.status === 404) {
+          setError("Venue not found");
+        } else {
+          setError("Failed to load venue");
+        }
+      } catch (error) {
+        console.error("Error fetching venue:", error);
+        setError("Failed to load venue");
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
-    }, 1000);
+    };
+
+    if (venueId) {
+      fetchVenue();
+    }
   }, [venueId]);
 
   const handleBookCourt = (courtId: number) => {
@@ -155,12 +136,18 @@ export default function VenueDetailPage() {
     );
   }
 
-  if (!venue) {
+  if (error || !venue) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-semibold text-gray-900">Venue Not Found</h1>
-          <p className="text-gray-600 mt-2">The venue you're looking for doesn't exist.</p>
+          <h1 className="text-2xl font-semibold text-gray-900">
+            {error || "Venue Not Found"}
+          </h1>
+          <p className="text-gray-600 mt-2">
+            {error === "Venue not found" 
+              ? "The venue you're looking for doesn't exist." 
+              : "Something went wrong while loading the venue."}
+          </p>
           <Link
             href="/venues"
             className="mt-4 inline-block bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors"
@@ -197,34 +184,70 @@ export default function VenueDetailPage() {
           <div className="lg:col-span-2 space-y-6">
             {/* Venue Header */}
             <div className="bg-white rounded-xl shadow-sm p-6">
-              {/* Photo Gallery Placeholder */}
-              <div className="h-64 bg-gradient-to-br from-primary-100 to-primary-200 rounded-lg flex items-center justify-center mb-6">
-                <BuildingOfficeIcon className="w-24 h-24 text-primary-600" />
-              </div>
+              {/* Photo Gallery */}
+              {venue.photos && venue.photos.length > 0 ? (
+                <div className="h-64 rounded-lg overflow-hidden mb-6">
+                  <img
+                    src={venue.photos[0]}
+                    alt={venue.name}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              ) : (
+                <div className="h-64 bg-gradient-to-br from-primary-100 to-primary-200 rounded-lg flex items-center justify-center mb-6">
+                  <BuildingOfficeIcon className="w-24 h-24 text-primary-600" />
+                </div>
+              )}
 
               <div className="flex justify-between items-start mb-4">
                 <div>
                   <h1 className="text-3xl font-bold text-gray-900 mb-2">{venue.name}</h1>
-                  <div className="flex items-center text-gray-600">
+                  <div className="flex items-center text-gray-600 mb-2">
                     <MapPinIcon className="w-5 h-5 mr-2" />
                     <span>{venue.address}, {venue.city}, {venue.state}</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {venue.sports.map((sport) => (
+                      <span
+                        key={sport}
+                        className="bg-primary-100 text-primary-800 text-sm px-3 py-1 rounded-full"
+                      >
+                        {sport}
+                      </span>
+                    ))}
                   </div>
                 </div>
                 
                 <div className="text-right">
-                  {venue.rating && (
+                  {venue.rating > 0 && (
                     <div className="flex items-center mb-1">
                       {renderStars(venue.rating)}
-                      <span className="ml-2 text-lg font-semibold">{venue.rating}</span>
+                      <span className="ml-2 text-lg font-semibold">{venue.rating.toFixed(1)}</span>
                     </div>
                   )}
                   <p className="text-sm text-gray-600">
-                    {venue.totalReviews} reviews
+                    {venue.reviewCount} review{venue.reviewCount !== 1 ? 's' : ''}
                   </p>
                 </div>
               </div>
 
               <p className="text-gray-700 leading-relaxed">{venue.description}</p>
+
+              <div className="mt-4 pt-4 border-t border-gray-200">
+                <div className="flex items-center text-sm text-gray-600">
+                  <ClockIcon className="w-4 h-4 mr-2" />
+                  <span>
+                    Open {venue.operatingHours.open.toString().padStart(2, '0')}:00 - 
+                    {venue.operatingHours.close.toString().padStart(2, '0')}:00
+                  </span>
+                </div>
+                <div className="flex items-center text-sm text-gray-600 mt-1">
+                  <CurrencyDollarIcon className="w-4 h-4 mr-2" />
+                  <span>
+                    Starting from ₹{Math.round(venue.minPrice / 100)}/hour
+                  </span>
+                </div>
+              </div>
             </div>
 
             {/* Amenities */}
@@ -260,7 +283,7 @@ export default function VenueDetailPage() {
                         <p className="text-sm text-gray-600">{court.sport}</p>
                       </div>
                       <div className="text-right">
-                        <p className="font-semibold text-gray-900">₹{court.pricePerHour}</p>
+                        <p className="font-semibold text-gray-900">₹{Math.round(court.pricePerHour / 100)}</p>
                         <p className="text-xs text-gray-500">per hour</p>
                       </div>
                     </div>
@@ -290,29 +313,43 @@ export default function VenueDetailPage() {
             {/* Reviews */}
             <div className="bg-white rounded-xl shadow-sm p-6">
               <h2 className="text-xl font-semibold text-gray-900 mb-4">
-                Reviews ({venue.totalReviews})
+                Reviews ({venue.reviewCount})
               </h2>
               
               <div className="space-y-4">
-                {reviews.map((review) => (
-                  <div key={review.id} className="border-b border-gray-200 pb-4 last:border-b-0">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center">
-                        <UserIcon className="w-8 h-8 text-gray-400 mr-3" />
-                        <div>
-                          <p className="font-medium text-gray-900">{review.userName}</p>
-                          <div className="flex items-center">
-                            {renderStars(review.rating)}
+                {venue.reviews.length > 0 ? (
+                  venue.reviews.map((review) => (
+                    <div key={review.id} className="border-b border-gray-200 pb-4 last:border-b-0">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center">
+                          {review.user.avatar ? (
+                            <img
+                              src={review.user.avatar}
+                              alt={review.user.name}
+                              className="w-8 h-8 rounded-full mr-3"
+                            />
+                          ) : (
+                            <UserIcon className="w-8 h-8 text-gray-400 mr-3" />
+                          )}
+                          <div>
+                            <p className="font-medium text-gray-900">{review.user.name}</p>
+                            <div className="flex items-center">
+                              {renderStars(review.rating)}
+                            </div>
                           </div>
                         </div>
+                        <span className="text-sm text-gray-500">
+                          {new Date(review.createdAt).toLocaleDateString()}
+                        </span>
                       </div>
-                      <span className="text-sm text-gray-500">
-                        {new Date(review.createdAt).toLocaleDateString()}
-                      </span>
+                      <p className="text-gray-700 ml-11">{review.comment}</p>
                     </div>
-                    <p className="text-gray-700 ml-11">{review.comment}</p>
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <p>No reviews yet. Be the first to review this venue!</p>
                   </div>
-                ))}
+                )}
               </div>
 
               {session && (
@@ -342,7 +379,7 @@ export default function VenueDetailPage() {
                         {venue.courts.find(c => c.id === selectedCourt)?.sport}
                       </p>
                       <p className="text-lg font-semibold text-primary-900 mt-2">
-                        ₹{venue.courts.find(c => c.id === selectedCourt)?.pricePerHour}/hr
+                        ₹{Math.round((venue.courts.find(c => c.id === selectedCourt)?.pricePerHour || 0) / 100)}/hr
                       </p>
                     </div>
                     

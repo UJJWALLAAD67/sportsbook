@@ -38,6 +38,11 @@ export default function OwnerVenuesPage() {
   const [venues, setVenues] = useState<Venue[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; venue: Venue | null }>({
+    isOpen: false,
+    venue: null,
+  });
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (status === "loading") return;
@@ -68,6 +73,39 @@ export default function OwnerVenuesPage() {
 
     fetchVenues();
   }, [session, status, router]);
+
+  const handleDeleteClick = (venue: Venue) => {
+    setDeleteModal({ isOpen: true, venue });
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteModal.venue) return;
+
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`/api/owner/venues/${deleteModal.venue.id}`, {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        // Remove the venue from the state
+        setVenues(venues.filter(v => v.id !== deleteModal.venue?.id));
+        setDeleteModal({ isOpen: false, venue: null });
+      } else {
+        const errorData = await response.json();
+        alert(errorData.error || "Failed to delete venue");
+      }
+    } catch (error) {
+      console.error("Error deleting venue:", error);
+      alert("Failed to delete venue. Please try again.");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteModal({ isOpen: false, venue: null });
+  };
 
   if (status === "loading" || isLoading) {
     return (
@@ -204,11 +242,11 @@ export default function OwnerVenuesPage() {
                   {/* Actions */}
                   <div className="flex items-center justify-between pt-4 border-t border-gray-200">
                     <Link
-                      href={`/venues/${venue.id}`}
+                      href={`/owner/venues/${venue.id}`}
                       className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900"
                     >
                       <EyeIcon className="w-4 h-4 mr-1" />
-                      View
+                      View Details
                     </Link>
                     <div className="flex space-x-2">
                       <Link
@@ -218,7 +256,10 @@ export default function OwnerVenuesPage() {
                         <PencilIcon className="w-4 h-4 mr-1" />
                         Edit
                       </Link>
-                      <button className="inline-flex items-center px-3 py-1.5 text-sm bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition-colors">
+                      <button
+                        onClick={() => handleDeleteClick(venue)}
+                        className="inline-flex items-center px-3 py-1.5 text-sm bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition-colors"
+                      >
                         <TrashIcon className="w-4 h-4 mr-1" />
                         Delete
                       </button>
@@ -227,6 +268,43 @@ export default function OwnerVenuesPage() {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {deleteModal.isOpen && deleteModal.venue && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                Delete Venue
+              </h3>
+              <p className="text-gray-600 mb-6">
+                Are you sure you want to delete "{deleteModal.venue.name}"? This action cannot be undone and will also delete all associated courts and bookings.
+              </p>
+              <div className="flex justify-end space-x-3">
+                <button
+                  onClick={handleDeleteCancel}
+                  disabled={isDeleting}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteConfirm}
+                  disabled={isDeleting}
+                  className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 disabled:opacity-50 flex items-center"
+                >
+                  {isDeleting ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Deleting...
+                    </>
+                  ) : (
+                    "Delete"
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>
