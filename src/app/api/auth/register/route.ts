@@ -75,6 +75,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true, message: "OTP sent to email" });
   } catch (err) {
+    console.log(err,"---------------")
     console.error("Registration failed:", err);
     return NextResponse.json({ error: "Registration failed" }, { status: 500 });
   }
