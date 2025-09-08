@@ -10,16 +10,13 @@ export async function GET(
     const venueId = parseInt(resolvedParams.id);
 
     if (isNaN(venueId)) {
-      return NextResponse.json(
-        { error: "Invalid venue ID" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Invalid venue ID" }, { status: 400 });
     }
 
     const venue = await prisma.venue.findUnique({
       where: {
         id: venueId,
-        approved: true
+        approved: true,
       },
       include: {
         owner: {
@@ -27,61 +24,60 @@ export async function GET(
             user: {
               select: {
                 fullName: true,
-                email: true
-              }
-            }
-          }
+                email: true,
+              },
+            },
+          },
         },
         courts: {
           orderBy: {
-            name: 'asc'
-          }
+            name: "asc",
+          },
         },
         reviews: {
           include: {
             user: {
               select: {
                 fullName: true,
-                avatarUrl: true
-              }
-            }
+                avatarUrl: true,
+              },
+            },
           },
           orderBy: {
-            createdAt: 'desc'
+            createdAt: "desc",
           },
-          take: 10
+          take: 10,
         },
         _count: {
           select: {
-            reviews: true
-          }
-        }
-      }
+            reviews: true,
+          },
+        },
+      },
     });
 
     if (!venue) {
-      return NextResponse.json(
-        { error: "Venue not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Venue not found" }, { status: 404 });
     }
 
     // Calculate average rating
-    const avgRating = venue.reviews.length > 0 
-      ? venue.reviews.reduce((sum, review) => sum + review.rating, 0) / venue.reviews.length
-      : 0;
+    const avgRating =
+      venue.reviews.length > 0
+        ? venue.reviews.reduce((sum, review) => sum + review.rating, 0) /
+          venue.reviews.length
+        : 0;
 
     // Get unique sports
-    const sports = [...new Set(venue.courts.map(court => court.sport))];
+    const sports = [...new Set(venue.courts.map((court) => court.sport))];
 
     // Get price range
-    const prices = venue.courts.map(court => court.pricePerHour);
+    const prices = venue.courts.map((court) => court.pricePerHour);
     const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
     const maxPrice = prices.length > 0 ? Math.max(...prices) : 0;
 
     // Get operating hours
-    const openTimes = venue.courts.map(court => court.openTime);
-    const closeTimes = venue.courts.map(court => court.closeTime);
+    const openTimes = venue.courts.map((court) => court.openTime);
+    const closeTimes = venue.courts.map((court) => court.closeTime);
     const earliestOpen = openTimes.length > 0 ? Math.min(...openTimes) : 6;
     const latestClose = closeTimes.length > 0 ? Math.max(...closeTimes) : 22;
 
@@ -105,34 +101,34 @@ export async function GET(
       currency: venue.courts[0]?.currency || "INR",
       operatingHours: {
         open: earliestOpen,
-        close: latestClose
+        close: latestClose,
       },
       amenities: venue.amenities,
       photos: venue.photos,
-      courts: venue.courts.map(court => ({
+      courts: venue.courts.map((court) => ({
         id: court.id,
         name: court.name,
         sport: court.sport,
         pricePerHour: court.pricePerHour,
         currency: court.currency,
         openTime: court.openTime,
-        closeTime: court.closeTime
+        closeTime: court.closeTime,
       })),
-      reviews: venue.reviews.map(review => ({
+      reviews: venue.reviews.map((review) => ({
         id: review.id,
         rating: review.rating,
         comment: review.comment,
         createdAt: review.createdAt,
         user: {
           name: review.user.fullName,
-          avatar: review.user.avatarUrl
-        }
+          avatar: review.user.avatarUrl,
+        },
       })),
       owner: {
         name: venue.owner.user.fullName,
         businessName: venue.owner.businessName,
-        phone: venue.owner.phone
-      }
+        phone: venue.owner.phone,
+      },
     };
 
     return NextResponse.json(transformedVenue);

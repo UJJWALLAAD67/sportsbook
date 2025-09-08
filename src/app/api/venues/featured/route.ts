@@ -6,48 +6,48 @@ export async function GET() {
     // Get featured venues (approved venues with high ratings or recent activity)
     const featuredVenues = await prisma.venue.findMany({
       where: {
-        approved: true
+        approved: true,
       },
       include: {
         courts: {
           select: {
             sport: true,
             pricePerHour: true,
-            currency: true
-          }
+            currency: true,
+          },
         },
         reviews: {
           select: {
-            rating: true
-          }
+            rating: true,
+          },
         },
         _count: {
           select: {
-            reviews: true
-          }
-        }
+            reviews: true,
+          },
+        },
       },
-      orderBy: [
-        { createdAt: 'desc' },
-        { name: 'asc' }
-      ],
-      take: 6
+      orderBy: [{ createdAt: "desc" }, { name: "asc" }],
+      take: 6,
     });
 
     // Transform the data to include computed fields
-    const transformedVenues = featuredVenues.map(venue => {
+    const transformedVenues = featuredVenues.map((venue) => {
       // Calculate average rating
-      const avgRating = venue.reviews.length > 0 
-        ? venue.reviews.reduce((sum, review) => sum + review.rating, 0) / venue.reviews.length
-        : 0;
+      const avgRating =
+        venue.reviews.length > 0
+          ? venue.reviews.reduce((sum, review) => sum + review.rating, 0) /
+            venue.reviews.length
+          : 0;
 
       // Get unique sports
-      const sports = [...new Set(venue.courts.map(court => court.sport))];
+      const sports = [...new Set(venue.courts.map((court) => court.sport))];
 
       // Get minimum price per hour
-      const minPrice = venue.courts.length > 0 
-        ? Math.min(...venue.courts.map(court => court.pricePerHour))
-        : 0;
+      const minPrice =
+        venue.courts.length > 0
+          ? Math.min(...venue.courts.map((court) => court.pricePerHour))
+          : 0;
 
       // Generate tags based on venue data
       const tags = [];
@@ -71,7 +71,7 @@ export async function GET() {
         currency: venue.courts[0]?.currency || "INR",
         amenities: venue.amenities,
         photos: venue.photos,
-        tags: tags.slice(0, 3) // Limit to 3 tags
+        tags: tags.slice(0, 3), // Limit to 3 tags
       };
     });
 

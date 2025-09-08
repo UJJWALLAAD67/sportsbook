@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    
+
     // Parse query parameters
     const search = searchParams.get("search") || "";
     const sport = searchParams.get("sport") || "";
@@ -20,7 +20,7 @@ export async function GET(request: Request) {
     // Build where clause
     const where: any = {
       approved: true,
-      AND: []
+      AND: [],
     };
 
     // Search filter
@@ -30,15 +30,15 @@ export async function GET(request: Request) {
           { name: { contains: search, mode: "insensitive" } },
           { description: { contains: search, mode: "insensitive" } },
           { address: { contains: search, mode: "insensitive" } },
-          { city: { contains: search, mode: "insensitive" } }
-        ]
+          { city: { contains: search, mode: "insensitive" } },
+        ],
       });
     }
 
     // City filter
     if (city) {
       where.AND.push({
-        city: { contains: city, mode: "insensitive" }
+        city: { contains: city, mode: "insensitive" },
       });
     }
 
@@ -47,9 +47,9 @@ export async function GET(request: Request) {
       where.AND.push({
         courts: {
           some: {
-            sport: { equals: sport, mode: "insensitive" }
-          }
-        }
+            sport: { equals: sport, mode: "insensitive" },
+          },
+        },
       });
     }
 
@@ -58,13 +58,13 @@ export async function GET(request: Request) {
       const priceFilter: any = {};
       if (minPrice) priceFilter.gte = parseInt(minPrice) * 100; // Convert to paisa
       if (maxPrice) priceFilter.lte = parseInt(maxPrice) * 100; // Convert to paisa
-      
+
       where.AND.push({
         courts: {
           some: {
-            pricePerHour: priceFilter
-          }
-        }
+            pricePerHour: priceFilter,
+          },
+        },
       });
     }
 
@@ -78,9 +78,9 @@ export async function GET(request: Request) {
         orderBy = {
           courts: {
             _min: {
-              pricePerHour: sortOrder as "asc" | "desc"
-            }
-          }
+              pricePerHour: sortOrder as "asc" | "desc",
+            },
+          },
         };
         break;
       case "rating":
@@ -104,39 +104,41 @@ export async function GET(request: Request) {
               name: true,
               sport: true,
               pricePerHour: true,
-              currency: true
-            }
+              currency: true,
+            },
           },
           reviews: {
             select: {
-              rating: true
-            }
+              rating: true,
+            },
           },
           _count: {
             select: {
-              reviews: true
-            }
-          }
+              reviews: true,
+            },
+          },
         },
         skip,
         take: limit,
-        orderBy
+        orderBy,
       }),
-      prisma.venue.count({ where })
+      prisma.venue.count({ where }),
     ]);
 
     // Transform venues with computed fields
-    let transformedVenues = venues.map(venue => {
+    let transformedVenues = venues.map((venue) => {
       // Calculate average rating
-      const avgRating = venue.reviews.length > 0 
-        ? venue.reviews.reduce((sum, review) => sum + review.rating, 0) / venue.reviews.length
-        : 0;
+      const avgRating =
+        venue.reviews.length > 0
+          ? venue.reviews.reduce((sum, review) => sum + review.rating, 0) /
+            venue.reviews.length
+          : 0;
 
       // Get unique sports
-      const sports = [...new Set(venue.courts.map(court => court.sport))];
+      const sports = [...new Set(venue.courts.map((court) => court.sport))];
 
       // Get price range
-      const prices = venue.courts.map(court => court.pricePerHour);
+      const prices = venue.courts.map((court) => court.pricePerHour);
       const minPricePerHour = prices.length > 0 ? Math.min(...prices) : 0;
       const maxPricePerHour = prices.length > 0 ? Math.max(...prices) : 0;
 
@@ -164,14 +166,16 @@ export async function GET(request: Request) {
         amenities: venue.amenities,
         photos: venue.photos,
         tags: tags.slice(0, 3),
-        courts: venue.courts
+        courts: venue.courts,
       };
     });
 
     // Apply rating filter if specified
     if (rating) {
       const minRating = parseFloat(rating);
-      transformedVenues = transformedVenues.filter(venue => venue.rating >= minRating);
+      transformedVenues = transformedVenues.filter(
+        (venue) => venue.rating >= minRating
+      );
     }
 
     // Sort by rating if specified
@@ -186,18 +190,18 @@ export async function GET(request: Request) {
       prisma.venue.findMany({
         where: { approved: true },
         select: { city: true },
-        distinct: ["city"]
+        distinct: ["city"],
       }),
       prisma.court.findMany({
         where: { venue: { approved: true } },
         select: { sport: true },
-        distinct: ["sport"]
-      })
+        distinct: ["sport"],
+      }),
     ]);
 
     const filters = {
-      cities: allCities.map(v => v.city).sort(),
-      sports: allSports.map(c => c.sport).sort()
+      cities: allCities.map((v) => v.city).sort(),
+      sports: allSports.map((c) => c.sport).sort(),
     };
 
     return NextResponse.json({
@@ -206,11 +210,10 @@ export async function GET(request: Request) {
         page,
         limit,
         total: totalCount,
-        pages: Math.ceil(totalCount / limit)
+        pages: Math.ceil(totalCount / limit),
       },
-      filters
+      filters,
     });
-
   } catch (error) {
     console.error("Error fetching venues:", error);
     return NextResponse.json(

@@ -2,47 +2,39 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/prisma";
 import { authOptions } from "@/lib/auth";
+import { venueSchema } from "@/lib/schemas/venue";
 
+/**
+ * GET handler to fetch a single venue for editing.
+ * Ensures the user is an owner and has permission to view the venue.
+ * Converts price from database format (paisa) to frontend format (rupees).
+ */
 export async function GET(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
-    
+
     if (!session || session.user.role !== "OWNER") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const resolvedParams = await params;
-    const venueId = parseInt(resolvedParams.id);
+    const { id } = await context.params;
+    const venueId = parseInt(id, 10);
 
     if (isNaN(venueId)) {
       return NextResponse.json({ error: "Invalid venue ID" }, { status: 400 });
     }
 
-    // Get the venue with owner check
     const venue = await prisma.venue.findFirst({
       where: {
         id: venueId,
-        owner: {
-          userId: session.user.id
-        }
+        owner: { userId: session.user.id },
       },
       include: {
         courts: true,
-        owner: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                fullName: true,
-                email: true
-              }
-            }
-          }
-        }
-      }
+      },
     });
 
     if (!venue) {
@@ -52,7 +44,16 @@ export async function GET(
       );
     }
 
-    return NextResponse.json(venue);
+    // Convert price from Paisa to Rupees
+    const venueForFrontend = {
+      ...venue,
+      courts: venue.courts.map((court) => ({
+        ...court,
+        pricePerHour: court.pricePerHour / 100,
+      })),
+    };
+
+    return NextResponse.json(venueForFrontend);
   } catch (error) {
     console.error("Error fetching venue:", error);
     return NextResponse.json(
@@ -62,33 +63,46 @@ export async function GET(
   }
 }
 
+/**
+ * PUT handler to update a venue and its associated courts.
+ * Validates input, ensures ownership, and handles courts CRUD in a transaction.
+ */
 export async function PUT(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
-    
+
     if (!session || session.user.role !== "OWNER") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const resolvedParams = await params;
-    const venueId = parseInt(resolvedParams.id);
-    const body = await request.json();
+    const { id } = await context.params;
+    const venueId = parseInt(id, 10);
 
     if (isNaN(venueId)) {
       return NextResponse.json({ error: "Invalid venue ID" }, { status: 400 });
     }
 
-    // Check if the venue belongs to the owner
+    const body = await request.json();
+    const validation = venueSchema.safeParse(body);
+
+    if (!validation.success) {
+      return NextResponse.json(
+        { error: "Invalid input", details: validation.error.format() },
+        { status: 400 }
+      );
+    }
+
+    const { courts: submittedCourts, ...venueData } = validation.data;
+
     const existingVenue = await prisma.venue.findFirst({
       where: {
         id: venueId,
-        owner: {
-          userId: session.user.id
-        }
-      }
+        owner: { userId: session.user.id },
+      },
+      select: { courts: { select: { id: true } } },
     });
 
     if (!existingVenue) {
@@ -98,87 +112,50 @@ export async function PUT(
       );
     }
 
-    // Update venue in a transaction
-    const updatedVenue = await prisma.$transaction(async (tx) => {
-      // Update venue details
-      const venue = await tx.venue.update({
+    const existingCourtIds = existingVenue.courts.map((c) => c.id);
+    const submittedCourtIds = submittedCourts
+      .map((c) => c.id)
+      .filter((id): id is number => !!id);
+    const courtsToDelete = existingCourtIds.filter(
+      (id) => !submittedCourtIds.includes(id)
+    );
+
+    await prisma.$transaction(async (tx) => {
+      await tx.venue.update({
         where: { id: venueId },
-        data: {
-          name: body.name,
-          description: body.description,
-          address: body.address,
-          city: body.city,
-          state: body.state,
-          country: body.country,
-          amenities: body.amenities,
-          latitude: body.latitude,
-          longitude: body.longitude,
-        },
-        include: {
-          courts: true
-        }
+        data: venueData,
       });
 
-      // Delete existing courts that are not in the update
-      const existingCourtIds = venue.courts.map(c => c.id);
-      const newCourtIds = body.courts.filter((c: { id?: number }) => c.id).map((c: { id: number }) => c.id);
-      const courtsToDelete = existingCourtIds.filter(id => !newCourtIds.includes(id));
-      
       if (courtsToDelete.length > 0) {
         await tx.court.deleteMany({
-          where: { id: { in: courtsToDelete } }
+          where: { id: { in: courtsToDelete } },
         });
       }
 
-      // Update existing courts and create new ones
-      for (const court of body.courts as Array<{
-        id?: number;
-        name: string;
-        sport: string;
-        pricePerHour: number;
-        currency: string;
-        openTime: number;
-        closeTime: number;
-      }>) {
+      for (const court of submittedCourts) {
+        const courtPayload = {
+          name: court.name,
+          sport: court.sport,
+          pricePerHour: Math.round(court.pricePerHour * 100), // Rupees → Paisa
+          currency: court.currency,
+          openTime: court.openTime,
+          closeTime: court.closeTime,
+        };
+
         if (court.id) {
-          // Update existing court
           await tx.court.update({
             where: { id: court.id },
-            data: {
-              name: court.name,
-              sport: court.sport,
-              pricePerHour: court.pricePerHour,
-              currency: court.currency,
-              openTime: court.openTime,
-              closeTime: court.closeTime,
-            }
+            data: courtPayload,
           });
         } else {
-          // Create new court
           await tx.court.create({
-            data: {
-              venueId: venue.id,
-              name: court.name,
-              sport: court.sport,
-              pricePerHour: court.pricePerHour,
-              currency: court.currency,
-              openTime: court.openTime,
-              closeTime: court.closeTime,
-            }
+            data: { ...courtPayload, venueId },
           });
         }
       }
-
-      // Return updated venue with courts
-      return await tx.venue.findUnique({
-        where: { id: venueId },
-        include: {
-          courts: true
-        }
-      });
     });
 
-    return NextResponse.json(updatedVenue);
+    return NextResponse.json({ message: "Venue updated successfully" });
   } catch (error) {
     console.error("Error updating venue:", error);
     return NextResponse.json(
@@ -188,49 +165,46 @@ export async function PUT(
   }
 }
 
+/**
+ * DELETE handler to remove a venue.
+ * Checks ownership and prevents deletion if there are active bookings.
+ */
 export async function DELETE(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
-    
+
     if (!session || session.user.role !== "OWNER") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const resolvedParams = await params;
-    const venueId = parseInt(resolvedParams.id);
+    const { id } = await context.params;
+    const venueId = parseInt(id, 10);
 
     if (isNaN(venueId)) {
       return NextResponse.json({ error: "Invalid venue ID" }, { status: 400 });
     }
 
-    // Check if the venue belongs to the owner
     const existingVenue = await prisma.venue.findFirst({
       where: {
         id: venueId,
-        owner: {
-          userId: session.user.id
-        }
+        owner: { userId: session.user.id },
       },
       include: {
         courts: {
-          include: {
+          select: {
             _count: {
               select: {
                 bookings: {
-                  where: {
-                    status: {
-                      in: ["PENDING", "CONFIRMED"]
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
+                  where: { status: { in: ["PENDING", "CONFIRMED"] } },
+                },
+              },
+            },
+          },
+        },
+      },
     });
 
     if (!existingVenue) {
@@ -240,21 +214,24 @@ export async function DELETE(
       );
     }
 
-    // Check for active bookings
     const hasActiveBookings = existingVenue.courts.some(
-      court => court._count.bookings > 0
+      (court) => court._count.bookings > 0
     );
 
     if (hasActiveBookings) {
       return NextResponse.json(
-        { error: "Cannot delete venue with active bookings. Please wait for all bookings to complete or be cancelled." },
+        {
+          error:
+            "Cannot delete venue with active bookings. Please wait for all bookings to complete or be cancelled.",
+        },
         { status: 400 }
       );
     }
 
-    // Delete venue (cascade will handle courts and related data)
-    await prisma.venue.delete({
-      where: { id: venueId }
+    await prisma.$transaction(async (tx) => {
+      await tx.court.deleteMany({ where: { venueId } });
+      await tx.review.deleteMany({ where: { venueId } });
+      await tx.venue.delete({ where: { id: venueId } });
     });
 
     return NextResponse.json({ message: "Venue deleted successfully" });

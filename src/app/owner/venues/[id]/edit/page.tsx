@@ -6,13 +6,17 @@ import { useEffect, useState } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { TrashIcon, PlusIcon, ArrowLeftIcon } from "@heroicons/react/24/outline";
+import {
+  TrashIcon,
+  PlusIcon,
+  ArrowLeftIcon,
+} from "@heroicons/react/24/outline";
 import { venueSchema } from "@/lib/schemas/venue";
 import Link from "next/link";
 
 const SPORTS_OPTIONS = [
   "Badminton",
-  "Tennis", 
+  "Tennis",
   "Football",
   "Cricket",
   "Basketball",
@@ -32,47 +36,28 @@ const AMENITIES_OPTIONS = [
   "Sound System",
 ];
 
-interface VenueData {
-  id: number;
-  name: string;
-  description: string;
-  address: string;
-  city: string;
-  state?: string;
-  country: string;
-  amenities: string[];
-  latitude?: number;
-  longitude?: number;
-  courts: Array<{
-    id?: number;
-    name: string;
-    sport: string;
-    pricePerHour: number;
-    currency: string;
-    openTime: number;
-    closeTime: number;
-  }>;
-}
+// Use schema-inferred type everywhere
+type VenueFormData = z.infer<typeof venueSchema>;
 
 export default function EditVenuePage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const params = useParams();
   const venueId = params.id as string;
-  
+
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
-  const [venue, setVenue] = useState<VenueData | null>(null);
+  const [venue, setVenue] = useState<VenueFormData | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const {
     register,
     control,
     handleSubmit,
     formState: { errors },
-    setValue,
     reset,
-  } = useForm<z.infer<typeof venueSchema>>({
+  } = useForm<VenueFormData>({
     resolver: zodResolver(venueSchema),
   });
 
@@ -96,26 +81,17 @@ export default function EditVenuePage() {
           const errorData = await response.json();
           throw new Error(errorData.error || "Failed to fetch venue");
         }
-        
-        const venueData: VenueData = await response.json();
+
+        const venueData: VenueFormData = await response.json();
         setVenue(venueData);
-        
-        // Set form values
-        reset({
-          name: venueData.name,
-          description: venueData.description,
-          address: venueData.address,
-          city: venueData.city,
-          state: venueData.state || "",
-          country: venueData.country,
-          amenities: venueData.amenities,
-          latitude: venueData.latitude,
-          longitude: venueData.longitude,
-          courts: venueData.courts,
-        });
+
+        // Reset form with fetched venue data
+        reset(venueData);
       } catch (error: unknown) {
         console.error("Error fetching venue:", error);
-        setFetchError(error instanceof Error ? error.message : 'Failed to fetch venue');
+        setFetchError(
+          error instanceof Error ? error.message : "Failed to fetch venue"
+        );
       } finally {
         setIsLoading(false);
       }
@@ -126,8 +102,10 @@ export default function EditVenuePage() {
     }
   }, [session, status, router, venueId, reset]);
 
-  const onSubmit = async (data: z.infer<typeof venueSchema>) => {
+  const onSubmit = async (data: VenueFormData) => {
     setIsSubmitting(true);
+    setSubmitError(null);
+
     try {
       const response = await fetch(`/api/owner/venues/${venueId}`, {
         method: "PUT",
@@ -141,11 +119,22 @@ export default function EditVenuePage() {
         router.push("/owner/venues");
       } else {
         const errorData = await response.json();
-        alert(errorData.error || "Failed to update venue");
+        if (errorData.details) {
+          const firstError = errorData.details._errors
+            ? errorData.details._errors[0]
+            : "Please check your input.";
+          setSubmitError(`Submission failed: ${firstError}`);
+        } else {
+          setSubmitError(
+            errorData.error || "An unknown error occurred on the server."
+          );
+        }
       }
     } catch (error) {
       console.error("Error updating venue:", error);
-      alert("Failed to update venue. Please try again.");
+      setSubmitError(
+        "Failed to connect to the server. Please check your network and try again."
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -200,7 +189,7 @@ export default function EditVenuePage() {
             <h2 className="text-xl font-semibold text-gray-900 mb-6">
               Venue Information
             </h2>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -212,7 +201,9 @@ export default function EditVenuePage() {
                   placeholder="Enter venue name"
                 />
                 {errors.name && (
-                  <p className="text-red-500 text-sm mt-1">{errors.name.message}</p>
+                  <p className="text-red-500 text-sm mt-1">
+                    {errors.name.message}
+                  </p>
                 )}
               </div>
 
@@ -226,7 +217,9 @@ export default function EditVenuePage() {
                   placeholder="Enter city"
                 />
                 {errors.city && (
-                  <p className="text-red-500 text-sm mt-1">{errors.city.message}</p>
+                  <p className="text-red-500 text-sm mt-1">
+                    {errors.city.message}
+                  </p>
                 )}
               </div>
             </div>
@@ -242,7 +235,9 @@ export default function EditVenuePage() {
                 placeholder="Describe your venue..."
               />
               {errors.description && (
-                <p className="text-red-500 text-sm mt-1">{errors.description.message}</p>
+                <p className="text-red-500 text-sm mt-1">
+                  {errors.description.message}
+                </p>
               )}
             </div>
 
@@ -256,7 +251,9 @@ export default function EditVenuePage() {
                 placeholder="Enter complete address"
               />
               {errors.address && (
-                <p className="text-red-500 text-sm mt-1">{errors.address.message}</p>
+                <p className="text-red-500 text-sm mt-1">
+                  {errors.address.message}
+                </p>
               )}
             </div>
 
@@ -282,7 +279,9 @@ export default function EditVenuePage() {
                   placeholder="Enter country"
                 />
                 {errors.country && (
-                  <p className="text-red-500 text-sm mt-1">{errors.country.message}</p>
+                  <p className="text-red-500 text-sm mt-1">
+                    {errors.country.message}
+                  </p>
                 )}
               </div>
             </div>
@@ -301,7 +300,9 @@ export default function EditVenuePage() {
                       {...register("amenities")}
                       className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                     />
-                    <span className="ml-2 text-sm text-gray-700">{amenity}</span>
+                    <span className="ml-2 text-sm text-gray-700">
+                      {amenity}
+                    </span>
                   </label>
                 ))}
               </div>
