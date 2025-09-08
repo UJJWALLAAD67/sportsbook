@@ -116,7 +116,7 @@ const Footer: React.FC = () => {
 
         {/* Copyright Notice */}
         <div className="mt-8 border-t border-gray-700 pt-8 text-center text-sm">
-          <p>&copy; {currentYear} QUICKCOURT. All rights reserved.</p>
+          <p>&copy; {currentYear} SPORTSBOOK. All rights reserved.</p>
         </div>
       </div>
     </footer>
