@@ -107,12 +107,15 @@ export default function EditVenuePage() {
     setSubmitError(null);
 
     try {
+      // Create a deep copy and ensure prices are in the correct format for the API
+      const payload = JSON.parse(JSON.stringify(data));
+      
       const response = await fetch(`/api/owner/venues/${venueId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify(payload),
       });
 
       if (response.ok) {
@@ -182,6 +185,12 @@ export default function EditVenuePage() {
             Update your venue information and courts
           </p>
         </div>
+
+        {submitError && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg relative mb-4">
+            <span className="block sm:inline">{submitError}</span>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
           {/* Venue Information */}

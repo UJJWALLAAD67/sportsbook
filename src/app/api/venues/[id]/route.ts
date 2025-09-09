@@ -104,7 +104,7 @@ export async function GET(
         close: latestClose,
       },
       amenities: venue.amenities,
-      photos: venue.photos,
+      imageUrl: venue.imageUrl,
       courts: venue.courts.map((court) => ({
         id: court.id,
         name: court.name,

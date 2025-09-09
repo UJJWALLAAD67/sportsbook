@@ -27,9 +27,9 @@ interface Venue {
   maxPricePerHour: number;
   currency: string;
   amenities: string[];
-  imageUrl: string | null;
   tags: string[];
   courts: any[];
+  image: string | null;
 }
 
 interface VenuesResponse {
@@ -354,15 +354,15 @@ export default function VenuesPage() {
                   className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow group"
                 >
                   <div className="relative h-48">
-                    {venue.imageUrl ? (
+                    {venue.image ? (
                       <img
-                        src={venue.imageUrl}
+                        src={venue.image}
                         alt={venue.name}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       />
                     ) : (
-                      <div className="w-full h-full bg-gray-200 flex items-center justify-center">
-                        <span className="text-gray-500">No Image</span>
+                      <div className="w-full h-full bg-gradient-to-br from-primary-100 to-primary-200 flex items-center justify-center">
+                        <span className="text-primary-600 font-semibold text-lg">{venue.name.charAt(0)}</span>
                       </div>
                     )}
                     {venue.sports.length > 0 && (

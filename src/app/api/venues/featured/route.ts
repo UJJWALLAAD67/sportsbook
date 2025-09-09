@@ -70,7 +70,7 @@ export async function GET() {
         minPricePerHour: minPrice,
         currency: venue.courts[0]?.currency || "INR",
         amenities: venue.amenities,
-        photos: venue.photos,
+        imageUrl: venue.imageUrl,
         tags: tags.slice(0, 3), // Limit to 3 tags
       };
     });

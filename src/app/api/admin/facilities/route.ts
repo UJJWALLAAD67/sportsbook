@@ -57,7 +57,7 @@ export async function GET(req: NextRequest) {
       state: venue.state,
       country: venue.country,
       amenities: venue.amenities,
-      photos: venue.photos,
+      imageUrl: venue.imageUrl,
       approved: venue.approved,
       owner: {
         id: venue.owner.user.id,

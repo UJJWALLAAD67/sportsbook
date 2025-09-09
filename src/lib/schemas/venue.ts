@@ -16,7 +16,6 @@ const courtSchema = z.object({
     .number()
     .min(1)
     .max(24, "Closing time must be between 1 and 24"),
-  imageUrl: z.string().url("Must be a valid URL").optional().or(z.literal('')),
 });
 
 // Venue schema
@@ -30,7 +29,6 @@ export const venueSchema = z.object({
   latitude: z.coerce.number().optional(),
   longitude: z.coerce.number().optional(),
   amenities: z.array(z.string()),
-  imageUrl: z.string().url("Must be a valid URL").optional().or(z.literal('')),
   courts: z.array(courtSchema).min(1, "At least one court is required"),
 });
 

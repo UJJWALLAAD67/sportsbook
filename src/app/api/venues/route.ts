@@ -164,7 +164,7 @@ export async function GET(request: Request) {
         maxPricePerHour,
         currency: venue.courts[0]?.currency || "INR",
         amenities: venue.amenities,
-        photos: venue.photos,
+        image: (venue as any).image || null,
         tags: tags.slice(0, 3),
         courts: venue.courts,
       };

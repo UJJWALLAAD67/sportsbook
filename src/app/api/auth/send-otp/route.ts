@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { hash } from "bcryptjs";
 import { sendMail } from "@/lib/mailer";
-import { Prisma } from "@prisma/client";
+import { Prisma } from "@/generated/prisma";
 
 // Generate 6-digit OTP
 function generateOTP(): string {
@@ -64,7 +64,7 @@ export async function POST(request: Request) {
         expiresAt,
         attempts: 0,
         verified: false,
-        metadata: pendingOtp?.metadata ?? Prisma.JsonNull, // ✅ safe for null
+        metadata: pendingOtp?.metadata ?? undefined, // ✅ safe for undefined
       },
     });
 

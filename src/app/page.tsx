@@ -48,7 +48,7 @@ interface FeaturedVenue {
   minPricePerHour: number;
   currency: string;
   amenities: string[];
-  photos: string[];
+  imageUrl: string | null;
   tags: string[];
 }
 
@@ -248,9 +248,9 @@ export default function Home() {
                     className="flex-shrink-0 w-[280px] bg-white rounded-lg shadow-md overflow-hidden transform hover:-translate-y-1 transition-transform duration-300"
                   >
                     <div className="relative">
-                      {venue.photos && venue.photos.length > 0 ? (
+                      {venue.imageUrl ? (
                         <img
-                          src={venue.photos[0]}
+                          src={venue.imageUrl}
                           alt={venue.name}
                           className="w-full h-40 object-cover"
                         />

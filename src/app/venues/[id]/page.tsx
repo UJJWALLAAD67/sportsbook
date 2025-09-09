@@ -17,7 +17,6 @@ import {
 import { StarIcon as StarSolidIcon } from "@heroicons/react/24/solid";
 
 interface Venue {
-  imageUrl: string;
   id: number;
   name: string;
   slug: string;
@@ -186,19 +185,9 @@ export default function VenueDetailPage() {
             {/* Venue Header */}
             <div className="bg-white rounded-xl shadow-sm p-6">
               {/* Photo Gallery */}
-              {venue.imageUrl ? (
-                <div className="h-64 rounded-lg overflow-hidden mb-6">
-                  <img
-                    src={venue.imageUrl}
-                    alt={venue.name}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              ) : (
-                <div className="h-64 bg-gradient-to-br from-primary-100 to-primary-200 rounded-lg flex items-center justify-center mb-6">
-                  <BuildingOfficeIcon className="w-24 h-24 text-primary-600" />
-                </div>
-              )}
+              <div className="h-64 bg-gradient-to-br from-primary-100 to-primary-200 rounded-lg flex items-center justify-center mb-6">
+                <BuildingOfficeIcon className="w-24 h-24 text-primary-600" />
+              </div>
 
               <div className="flex justify-between items-start mb-4">
                 <div>

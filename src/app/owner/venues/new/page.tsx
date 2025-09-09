@@ -37,6 +37,8 @@ export default function NewVenuePage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadPreview, setUploadPreview] = useState<string | null>(null);
 
   const {
     register,
@@ -74,23 +76,64 @@ export default function NewVenuePage() {
     }
   }, [session, status, router]);
 
+  // Handle file selection
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+      
+      // Create preview URL
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setUploadPreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Remove selected image
+  const removeImage = () => {
+    setSelectedFile(null);
+    setUploadPreview(null);
+    // Reset file input
+    const fileInput = document.getElementById('venue-image') as HTMLInputElement;
+    if (fileInput) fileInput.value = '';
+  };
+
   // Use SubmitHandler to explicitly type the function
   const onSubmit: SubmitHandler<VenueFormData> = async (data) => {
     setIsLoading(true);
     setApiError(null);
-    // Create a deep copy to avoid mutating the original form data
-    const payload = JSON.parse(JSON.stringify(data));
-
-    // Convert price to paisa for each court
-    payload.courts.forEach((court: any) => {
-      court.pricePerHour = Math.round(court.pricePerHour * 100);
-    });
+    
     try {
-      const res = await fetch("/api/owner/venues", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+      // Create a deep copy to avoid mutating the original form data
+      const venueData = JSON.parse(JSON.stringify(data));
+
+      // Convert price to paisa for each court
+      venueData.courts.forEach((court: any) => {
+        court.pricePerHour = Math.round(court.pricePerHour * 100);
       });
+
+      let res;
+      
+      if (selectedFile) {
+        // Send as FormData if image is selected
+        const formData = new FormData();
+        formData.append('image', selectedFile);
+        formData.append('venueData', JSON.stringify(venueData));
+        
+        res = await fetch("/api/owner/venues", {
+          method: "POST",
+          body: formData,
+        });
+      } else {
+        // Send as JSON if no image
+        res = await fetch("/api/owner/venues", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(venueData),
+        });
+      }
 
       if (!res.ok) {
         const errorData = await res.json();
@@ -230,22 +273,6 @@ export default function NewVenuePage() {
               </div>
             </div>
 
-            {/* Image URL */}
-            <div className="mt-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Venue Image URL
-              </label>
-              <input
-                {...register("imageUrl")}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                placeholder="https://example.com/venue_image.png"
-              />
-              {errors.imageUrl && (
-                <p className="mt-1 text-sm text-red-600">
-                  {errors.imageUrl.message}
-                </p>
-              )}
-            </div>
           </div>
 
           {/* Amenities */}
@@ -411,18 +438,55 @@ export default function NewVenuePage() {
             </div>
           </div>
 
-          {/* Photo Upload Placeholder */}
+          {/* Photo Upload */}
           <div className="bg-white rounded-xl shadow-sm p-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-6">Photos</h2>
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-              <PhotoIcon className="mx-auto h-12 w-12 text-gray-400" />
-              <p className="mt-2 text-sm text-gray-600">
-                Photo upload functionality will be implemented later
-              </p>
-              <p className="text-xs text-gray-500">
-                Upload high-quality photos of your venue
-              </p>
+            
+            {/* Upload Area */}
+            <div className="mb-6">
+              <input
+                type="file"
+                id="venue-image"
+                accept="image/*"
+                onChange={handleFileSelect}
+                className="hidden"
+              />
+              <label
+                htmlFor="venue-image"
+                className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-primary-400 hover:bg-gray-50 transition-colors block"
+              >
+                <PhotoIcon className="mx-auto h-12 w-12 text-gray-400" />
+                <p className="mt-2 text-sm text-gray-600">
+                  Click to upload venue photo
+                </p>
+                <p className="text-xs text-gray-500">
+                  PNG, JPG, WebP up to 5MB
+                </p>
+              </label>
             </div>
+
+            {/* Image Preview */}
+            {uploadPreview && (
+              <div className="mb-6">
+                <div className="relative inline-block">
+                  <img
+                    src={uploadPreview}
+                    alt="Venue preview"
+                    className="w-48 h-32 object-cover rounded-lg border border-gray-200"
+                  />
+                  <button
+                    type="button"
+                    onClick={removeImage}
+                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                  >
+                    <TrashIcon className="w-4 h-4" />
+                  </button>
+                  <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-1 rounded-b-lg">
+                    {selectedFile?.name}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Submit Button */}

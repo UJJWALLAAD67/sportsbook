@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/prisma";
 import { authOptions } from "@/lib/auth";
 import { venueSchema } from "@/lib/schemas/venue";
+import { uploadImageToCloudinary, deleteImageFromCloudinary } from "@/lib/cloudinary";
 
 /**
  * GET handler to fetch a single venue for editing.
@@ -85,8 +86,59 @@ export async function PUT(
       return NextResponse.json({ error: "Invalid venue ID" }, { status: 400 });
     }
 
-    const body = await request.json();
-    const validation = venueSchema.safeParse(body);
+    // Check if request is FormData (with image) or JSON (without image)
+    const contentType = request.headers.get('content-type');
+    let venueData;
+    let cloudinaryResult = null;
+
+    if (contentType?.includes('multipart/form-data')) {
+      // Handle FormData with image
+      const formData = await request.formData();
+      
+      // Extract image file
+      const imageFile = formData.get('image') as File;
+      if (imageFile && imageFile.size > 0) {
+        // Validate image
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+        const maxSize = 10 * 1024 * 1024; // 10MB limit for Cloudinary
+
+        if (!allowedTypes.includes(imageFile.type)) {
+          return NextResponse.json(
+            { error: `Invalid file type: ${imageFile.type}. Only JPEG, PNG, and WebP are allowed.` },
+            { status: 400 }
+          );
+        }
+
+        if (imageFile.size > maxSize) {
+          return NextResponse.json(
+            { error: `File too large. Maximum size is 10MB.` },
+            { status: 400 }
+          );
+        }
+
+        try {
+          // Upload to Cloudinary
+          const bytes = await imageFile.arrayBuffer();
+          const buffer = Buffer.from(bytes);
+          cloudinaryResult = await uploadImageToCloudinary(buffer, 'venues');
+        } catch (error) {
+          console.error('Cloudinary upload error:', error);
+          return NextResponse.json(
+            { error: 'Failed to upload image. Please try again.' },
+            { status: 500 }
+          );
+        }
+      }
+
+      // Parse venue data from FormData
+      const venueDataString = formData.get('venueData') as string;
+      venueData = JSON.parse(venueDataString);
+    } else {
+      // Handle regular JSON request (backward compatibility)
+      venueData = await request.json();
+    }
+
+    const validation = venueSchema.safeParse(venueData);
 
     if (!validation.success) {
       return NextResponse.json(
@@ -102,7 +154,10 @@ export async function PUT(
         id: venueId,
         owner: { userId: session.user.id },
       },
-      select: { courts: { select: { id: true } } },
+      select: { 
+        courts: { select: { id: true } },
+        imagePublicId: true // Get current image public_id for deletion if needed
+      },
     });
 
     if (!existingVenue) {
@@ -121,18 +176,36 @@ export async function PUT(
     );
 
     await prisma.$transaction(async (tx) => {
+      // Prepare venue update data
+      const updateData: any = {
+        name: venueData.name,
+        description: venueData.description,
+        address: venueData.address,
+        city: venueData.city,
+        state: venueData.state,
+        country: venueData.country,
+        amenities: venueData.amenities,
+      };
+
+      // If new image is uploaded, update image fields and delete old image
+      if (cloudinaryResult) {
+        updateData.image = cloudinaryResult.secure_url;
+        updateData.imagePublicId = cloudinaryResult.public_id;
+        
+        // Delete old image from Cloudinary if it exists
+        if (existingVenue.imagePublicId) {
+          try {
+            await deleteImageFromCloudinary(existingVenue.imagePublicId);
+          } catch (error) {
+            console.error('Failed to delete old image from Cloudinary:', error);
+            // Continue with update even if old image deletion fails
+          }
+        }
+      }
+
       await tx.venue.update({
         where: { id: venueId },
-        data: {
-          name: venueData.name,
-          description: venueData.description,
-          address: venueData.address,
-          city: venueData.city,
-          state: venueData.state,
-          country: venueData.country,
-          amenities: venueData.amenities,
-          imageUrl: venueData.imageUrl,
-        },
+        data: updateData,
       });
 
       if (courtsToDelete.length > 0) {
@@ -149,7 +222,6 @@ export async function PUT(
           currency: court.currency,
           openTime: court.openTime,
           closeTime: court.closeTime,
-          imageUrl: court.imageUrl,
         };
 
         if (court.id) {
@@ -178,6 +250,7 @@ export async function PUT(
 /**
  * DELETE handler to remove a venue.
  * Checks ownership and prevents deletion if there are active bookings.
+ * Also deletes associated image from Cloudinary.
  */
 export async function DELETE(
   request: Request,
@@ -215,6 +288,7 @@ export async function DELETE(
           },
         },
       },
+      // Include imagePublicId for Cloudinary deletion
     });
 
     if (!existingVenue) {
@@ -239,6 +313,16 @@ export async function DELETE(
     }
 
     await prisma.$transaction(async (tx) => {
+      // Delete associated image from Cloudinary if it exists
+      if (existingVenue.imagePublicId) {
+        try {
+          await deleteImageFromCloudinary(existingVenue.imagePublicId);
+        } catch (error) {
+          console.error('Failed to delete image from Cloudinary:', error);
+          // Continue with venue deletion even if image deletion fails
+        }
+      }
+
       await tx.court.deleteMany({ where: { venueId } });
       await tx.review.deleteMany({ where: { venueId } });
       await tx.venue.delete({ where: { id: venueId } });
