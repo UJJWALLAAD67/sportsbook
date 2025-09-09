@@ -14,8 +14,16 @@ import {
   CogIcon,
   ArrowRightOnRectangleIcon,
   MapPinIcon,
+  InformationCircleIcon,
+  PhoneIcon,
 } from "@heroicons/react/24/outline";
 import React from "react";
+
+const publicNavLinks = [
+  { name: "Venues", href: "/venues" },
+  { name: "About Us", href: "/about" },
+  { name: "Contact Us", href: "/contact" },
+];
 
 const Navbar: React.FC = () => {
   const { data: session, status } = useSession();
@@ -72,20 +80,26 @@ const Navbar: React.FC = () => {
     <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-sm shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="relative flex h-16 items-center justify-between">
-          {/* Left Side: Logo */}
-          <Link
-            href="/"
-            className="text-2xl font-bold tracking-tight text-gray-900"
-          >
-           SPORTS BOOK
-          </Link>
+          <div className="flex items-center">
+            <Link
+              href="/"
+              className="text-2xl font-bold tracking-tight text-gray-900"
+            >
+              SPORTS BOOK
+            </Link>
+          </div>
 
-          {/* Center: Location (Mobile) */}
-          <div className="sm:hidden absolute left-1/2 -translate-x-1/2">
-            <div className="flex items-center gap-1 text-sm font-semibold text-gray-600">
-              <MapPinIcon className="w-4 h-4" />
-              <span>Surat</span>
-            </div>
+          {/* Center: Public Links (Desktop) */}
+          <div className="hidden sm:flex sm:gap-x-6">
+            {publicNavLinks.map((item) => (
+              <Link
+                key={item.name}
+                href={item.href}
+                className="text-sm font-semibold leading-6 text-gray-700 hover:text-blue-600 transition-colors"
+              >
+                {item.name}
+              </Link>
+            ))}
           </div>
 
           {/* Right Side: Auth / Profile */}
@@ -96,7 +110,7 @@ const Navbar: React.FC = () => {
                 <div className="relative ml-4">
                   <button
                     onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
-                    className="flex items-center text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                    className="flex items-center text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                   >
                     <span className="sr-only">Open user menu</span>
                     {session.user.avatarUrl ? (
@@ -128,6 +142,14 @@ const Navbar: React.FC = () => {
                             </p>
                           </div>
                           <div className="py-2">
+                            <Link
+                              href="/profile"
+                              className="flex items-center px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-100 hover:text-green-600 transition-colors"
+                              onClick={() => setIsProfileMenuOpen(false)}
+                            >
+                              <UserCircleIcon className="w-5 h-5 mr-3 text-gray-400" />
+                              My Profile
+                            </Link>
                             {profileNavigationItems.map((item) => (
                               <Link
                                 key={item.name}

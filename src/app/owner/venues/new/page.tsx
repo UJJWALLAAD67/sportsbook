@@ -131,11 +131,13 @@ export default function NewVenuePage() {
         )}
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-          {/* Basic Information */}
+          {/* Basic Information - CORRECTED SECTION */}
           <div className="bg-white rounded-xl shadow-sm p-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-6">
               Basic Information
             </h2>
+
+            {/* Grid for Name and City */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -168,6 +170,8 @@ export default function NewVenuePage() {
                 )}
               </div>
             </div>
+
+            {/* Description */}
             <div className="mt-6">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Description *
@@ -184,6 +188,8 @@ export default function NewVenuePage() {
                 </p>
               )}
             </div>
+
+            {/* Address */}
             <div className="mt-6">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Address *
@@ -199,6 +205,8 @@ export default function NewVenuePage() {
                 </p>
               )}
             </div>
+
+            {/* Grid for State and Country */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -216,10 +224,27 @@ export default function NewVenuePage() {
                 </label>
                 <input
                   {...register("country")}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                   readOnly
                 />
               </div>
+            </div>
+
+            {/* Image URL */}
+            <div className="mt-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Venue Image URL
+              </label>
+              <input
+                {...register("imageUrl")}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                placeholder="https://example.com/venue_image.png"
+              />
+              {errors.imageUrl && (
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.imageUrl.message}
+                </p>
+              )}
             </div>
           </div>
 

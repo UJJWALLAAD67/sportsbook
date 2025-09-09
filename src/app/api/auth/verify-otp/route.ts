@@ -17,13 +17,12 @@ export async function POST(request: Request) {
     const otpRecord = await prisma.emailOtp.findFirst({
       where: {
         email,
-        verified: false
+        verified: false,
       },
       orderBy: {
-        createdAt: 'desc'
-      }
+        createdAt: "desc",
+      },
     });
-
     if (!otpRecord) {
       return NextResponse.json(
         { error: "No valid OTP found. Please request a new one." },
@@ -33,7 +32,7 @@ export async function POST(request: Request) {
 
     if (otpRecord.expiresAt < new Date()) {
       await prisma.emailOtp.delete({
-        where: { id: otpRecord.id }
+        where: { id: otpRecord.id },
       });
       return NextResponse.json(
         { error: "OTP has expired. Please request a new one." },
@@ -43,7 +42,7 @@ export async function POST(request: Request) {
 
     if (otpRecord.attempts >= 3) {
       await prisma.emailOtp.delete({
-        where: { id: otpRecord.id }
+        where: { id: otpRecord.id },
       });
       return NextResponse.json(
         { error: "Too many failed attempts. Please request a new OTP." },
@@ -57,8 +56,8 @@ export async function POST(request: Request) {
       await prisma.emailOtp.update({
         where: { id: otpRecord.id },
         data: {
-          attempts: otpRecord.attempts + 1
-        }
+          attempts: otpRecord.attempts + 1,
+        },
       });
 
       const attemptsLeft = 3 - (otpRecord.attempts + 1);
@@ -71,17 +70,22 @@ export async function POST(request: Request) {
     // Parse the stored user data from metadata
     let userData;
     try {
-      userData = JSON.parse(otpRecord.metadata || '{}');
+      userData = JSON.parse((otpRecord.metadata as string) || "{}");
     } catch (error) {
       return NextResponse.json(
-        { error: "Invalid registration data. Please start registration again." },
+        {
+          error: "Invalid registration data. Please start registration again.",
+        },
         { status: 400 }
       );
     }
 
     if (!userData.email || !userData.passwordHash) {
       return NextResponse.json(
-        { error: "Incomplete registration data. Please start registration again." },
+        {
+          error:
+            "Incomplete registration data. Please start registration again.",
+        },
         { status: 400 }
       );
     }
@@ -110,15 +114,17 @@ export async function POST(request: Request) {
 
       // Delete all OTPs for this email (no need to keep them after successful verification)
       await tx.emailOtp.deleteMany({
-        where: { email: userData.email }
+        where: { email: userData.email },
       });
     });
 
-    return NextResponse.json({
-      success: true,
-      message: "Email verified and account created successfully!"
-    });
-
+    return NextResponse.json(
+      {
+        success: true,
+        message: "Email verified and account created successfully!",
+      },
+      { status: 200 }
+    );
   } catch (error) {
     console.error("Verify OTP error:", error);
     return NextResponse.json(

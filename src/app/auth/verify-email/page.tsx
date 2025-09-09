@@ -9,7 +9,7 @@ export default function VerifyEmail() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const email = searchParams.get("email");
-  
+
   const [otp, setOtp] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isResending, setIsResending] = useState(false);
@@ -56,14 +56,16 @@ export default function VerifyEmail() {
 
       const data = await response.json();
 
-      if (response.ok) {
+      if (response.ok && data.success) {
+        setError("");
         setIsVerified(true);
         setMessage(data.message);
         setTimeout(() => {
           router.push("/auth/login?verified=true");
         }, 2000);
       } else {
-        setError(data.error);
+        setMessage("");
+        setError(data.error || "An unknown error occurred.");
       }
     } catch (error) {
       setError("Something went wrong. Please try again.");
@@ -118,10 +120,9 @@ export default function VerifyEmail() {
             {isVerified ? "Email Verified!" : "Verify Your Email"}
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            {isVerified 
+            {isVerified
               ? "Your email has been successfully verified. Redirecting to login..."
-              : `We've sent a 6-digit code to ${email}`
-            }
+              : `We've sent a 6-digit code to ${email}`}
           </p>
         </div>
 
@@ -167,21 +168,18 @@ export default function VerifyEmail() {
             </div>
 
             <div className="text-center space-y-2">
-              <p className="text-sm text-gray-600">
-                Didn't receive the code?
-              </p>
+              <p className="text-sm text-gray-600">Didn't receive the code?</p>
               <button
                 type="button"
                 onClick={handleResendOtp}
                 disabled={isResending || countdown > 0}
                 className="text-primary-600 hover:text-primary-500 font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isResending 
-                  ? "Sending..." 
-                  : countdown > 0 
-                    ? `Resend in ${countdown}s`
-                    : "Resend OTP"
-                }
+                {isResending
+                  ? "Sending..."
+                  : countdown > 0
+                  ? `Resend in ${countdown}s`
+                  : "Resend OTP"}
               </button>
             </div>
 

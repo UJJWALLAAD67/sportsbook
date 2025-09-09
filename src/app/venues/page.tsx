@@ -9,7 +9,7 @@ import {
   StarIcon,
   FunnelIcon,
   ChevronDownIcon,
-  ChevronUpIcon
+  ChevronUpIcon,
 } from "@heroicons/react/24/outline";
 
 interface Venue {
@@ -27,7 +27,7 @@ interface Venue {
   maxPricePerHour: number;
   currency: string;
   amenities: string[];
-  photos: string[];
+  imageUrl: string | null;
   tags: string[];
   courts: any[];
 }
@@ -49,21 +49,27 @@ interface VenuesResponse {
 export default function VenuesPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  
+
   // State management
   const [data, setData] = useState<VenuesResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
-  
+
   // Filter states
   const [search, setSearch] = useState(searchParams.get("search") || "");
-  const [selectedSport, setSelectedSport] = useState(searchParams.get("sport") || "");
-  const [selectedCity, setSelectedCity] = useState(searchParams.get("city") || "");
+  const [selectedSport, setSelectedSport] = useState(
+    searchParams.get("sport") || ""
+  );
+  const [selectedCity, setSelectedCity] = useState(
+    searchParams.get("city") || ""
+  );
   const [minPrice, setMinPrice] = useState(searchParams.get("minPrice") || "");
   const [maxPrice, setMaxPrice] = useState(searchParams.get("maxPrice") || "");
   const [minRating, setMinRating] = useState(searchParams.get("rating") || "");
   const [sortBy, setSortBy] = useState(searchParams.get("sortBy") || "name");
-  const [currentPage, setCurrentPage] = useState(parseInt(searchParams.get("page") || "1"));
+  const [currentPage, setCurrentPage] = useState(
+    parseInt(searchParams.get("page") || "1")
+  );
 
   // Fetch venues
   const fetchVenues = async () => {
@@ -134,7 +140,16 @@ export default function VenuesPage() {
 
   useEffect(() => {
     updateURL();
-  }, [search, selectedSport, selectedCity, minPrice, maxPrice, minRating, sortBy, currentPage]);
+  }, [
+    search,
+    selectedSport,
+    selectedCity,
+    minPrice,
+    maxPrice,
+    minRating,
+    sortBy,
+    currentPage,
+  ]);
 
   return (
     <div className="bg-gray-50 min-h-screen">
@@ -301,7 +316,10 @@ export default function VenuesPage() {
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="bg-white rounded-lg shadow-sm overflow-hidden animate-pulse">
+              <div
+                key={i}
+                className="bg-white rounded-lg shadow-sm overflow-hidden animate-pulse"
+              >
                 <div className="h-48 bg-gray-300"></div>
                 <div className="p-4 space-y-3">
                   <div className="h-6 bg-gray-300 rounded"></div>
@@ -316,8 +334,13 @@ export default function VenuesPage() {
             {/* Results Info */}
             <div className="flex justify-between items-center mb-6">
               <p className="text-gray-600">
-                Showing {((data.pagination.page - 1) * data.pagination.limit) + 1} to{" "}
-                {Math.min(data.pagination.page * data.pagination.limit, data.pagination.total)} of{" "}
+                Showing {(data.pagination.page - 1) * data.pagination.limit + 1}{" "}
+                to
+                {Math.min(
+                  data.pagination.page * data.pagination.limit,
+                  data.pagination.total
+                )}{" "}
+                of
                 {data.pagination.total} venues
               </p>
             </div>
@@ -331,9 +354,9 @@ export default function VenuesPage() {
                   className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow group"
                 >
                   <div className="relative h-48">
-                    {venue.photos && venue.photos.length > 0 ? (
+                    {venue.imageUrl ? (
                       <img
-                        src={venue.photos[0]}
+                        src={venue.imageUrl}
                         alt={venue.name}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       />
@@ -350,7 +373,7 @@ export default function VenuesPage() {
                       </div>
                     )}
                   </div>
-                  
+
                   <div className="p-4">
                     <div className="flex justify-between items-start mb-2">
                       <h3 className="font-bold text-lg text-gray-900 line-clamp-1">
@@ -359,30 +382,35 @@ export default function VenuesPage() {
                       {venue.rating > 0 && (
                         <div className="flex items-center text-sm">
                           <StarIcon className="w-4 h-4 text-yellow-500 mr-1" />
-                          <span className="font-medium">{venue.rating.toFixed(1)}</span>
-                          <span className="text-gray-500 ml-1">({venue.reviewCount})</span>
+                          <span className="font-medium">
+                            {venue.rating.toFixed(1)}
+                          </span>
+                          <span className="text-gray-500 ml-1">
+                            ({venue.reviewCount})
+                          </span>
                         </div>
                       )}
                     </div>
-                    
+
                     <div className="flex items-center text-sm text-gray-600 mb-2">
                       <MapPinIcon className="w-4 h-4 mr-1" />
                       <span className="line-clamp-1">{venue.address}</span>
                     </div>
-                    
+
                     <p className="text-sm text-gray-600 line-clamp-2 mb-3">
                       {venue.description}
                     </p>
-                    
+
                     <div className="flex justify-between items-center mb-3">
                       <span className="text-lg font-bold text-primary-600">
                         ₹{Math.round(venue.minPricePerHour / 100)}/hour
                       </span>
                       <span className="text-sm text-gray-500">
-                        {venue.courts.length} court{venue.courts.length !== 1 ? 's' : ''}
+                        {venue.courts.length} court
+                        {venue.courts.length !== 1 ? "s" : ""}
                       </span>
                     </div>
-                    
+
                     <div className="flex flex-wrap gap-2">
                       {venue.tags.slice(0, 2).map((tag) => (
                         <span
@@ -409,8 +437,11 @@ export default function VenuesPage() {
                   >
                     Previous
                   </button>
-                  
-                  {Array.from({ length: data.pagination.pages }, (_, i) => i + 1).map((page) => (
+
+                  {Array.from(
+                    { length: data.pagination.pages },
+                    (_, i) => i + 1
+                  ).map((page) => (
                     <button
                       key={page}
                       onClick={() => setCurrentPage(page)}
@@ -423,9 +454,13 @@ export default function VenuesPage() {
                       {page}
                     </button>
                   ))}
-                  
+
                   <button
-                    onClick={() => setCurrentPage(Math.min(data.pagination.pages, currentPage + 1))}
+                    onClick={() =>
+                      setCurrentPage(
+                        Math.min(data.pagination.pages, currentPage + 1)
+                      )
+                    }
                     disabled={currentPage === data.pagination.pages}
                     className="px-3 py-2 border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
                   >
@@ -437,9 +472,12 @@ export default function VenuesPage() {
           </>
         ) : (
           <div className="text-center py-16 bg-white rounded-lg shadow-sm">
-            <h3 className="text-lg font-semibold text-gray-900">No Venues Found</h3>
+            <h3 className="text-lg font-semibold text-gray-900">
+              No Venues Found
+            </h3>
             <p className="text-gray-500 mt-2">
-              Try adjusting your search criteria or filters to find what you're looking for.
+              Try adjusting your search criteria or filters to find what you're
+              looking for.
             </p>
             <button
               onClick={clearFilters}

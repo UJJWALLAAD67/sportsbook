@@ -1,0 +1,75 @@
+### File: `src/app/owner/dashboard/page.tsx`
+
+---
+
+### **Part 1: Core Concepts (The Basics)**
+
+This section explains the fundamental building blocks from React and Next.js used in this file. Understanding these is key to understanding the code.
+
+*   **What is a "Hook"?**
+    *   Hooks are special functions in React that start with the word `"use"` (e.g., `useState`, `useEffect`). They let you "hook into" React's features from your components. For example, they let you add state (memory) and perform actions after rendering (side effects).
+
+*   **`useState` Hook**
+    *   **Purpose**: To give a component its own memory, or "state".
+    *   **How it works**: `const [myValue, setMyValue] = useState(initialValue);`
+        *   `myValue`: The current value of the state (the data you want to store).
+        *   `setMyValue`: A function you call to update that value.
+        *   `initialValue`: The value the state will have when the component first loads.
+    *   **In this file**: `useState` is used to store the `stats` from the API, the `venues` list, and the `isLoading` status.
+
+*   **`useEffect` Hook**
+    *   **Purpose**: To run code *after* the component has been rendered on the screen. This is perfect for tasks that shouldn't block the UI, like fetching data from an API.
+    *   **How it works**: `useEffect(() => { /* code to run */ }, [dependencies]);`
+        *   The code inside the `{}` is the "effect" that will run.
+        *   The `[dependencies]` array tells React to re-run the effect *only* if one of the values in the array has changed. If you provide an empty array `[]`, it will only run once when the component first mounts.
+    *   **In this file**: `useEffect` is used to check if the user is authenticated and to trigger the `fetchData` function right after the component loads.
+
+*   **`useSession` Hook (from NextAuth.js library)**
+    *   **Purpose**: A special hook provided by the `next-auth/react` library to easily access information about the currently logged-in user.
+    *   **How it works**: `const { data: session, status } = useSession();`
+        *   `session`: An object containing the user's data (like `session.user.name`, `session.user.role`).
+        *   `status`: A string that tells you the current authentication status: `"loading"`, `"authenticated"`, or `"unauthenticated"`.
+
+*   **`useRouter` Hook (from Next.js library)**
+    *   **Purpose**: Gives you access to the Next.js router object, which allows you to control navigation.
+    *   **How it works**: `const router = useRouter();`
+    *   **In this file**: It's used to redirect the user to the login page if they are not authenticated (`router.push("/auth/login")`).
+
+---
+
+### **Part 2: Code-Level Explanation**
+
+This section explains the code in `page.tsx` line-by-line.
+
+*   **`"use client";`**
+    *   This declaration at the top is essential. It tells Next.js that this is a "Client Component," meaning it will run in the user's browser, not on the server. This is required because it uses hooks like `useState` and `useEffect` which need to interact with the browser.
+
+*   **`interface DashboardStats { ... }`**
+    *   This is a TypeScript feature. It defines the "shape" or structure of the `stats` object that we expect to get from our API. It helps prevent bugs by ensuring the data has the correct properties (e.g., `totalVenues`, `totalBookings`).
+
+*   **`export default function OwnerDashboard() { ... }`**
+    *   This is the main function that defines the component.
+
+*   **Inside the component:**
+    *   `const { data: session, status } = useSession();`: Gets the current user's session and auth status.
+    *   `const router = useRouter();`: Gets the router object for navigation.
+    *   `const [stats, setStats] = useState<DashboardStats>({...});`: Sets up a state variable named `stats` to hold the dashboard data. It starts as an empty object.
+    *   `const [isLoading, setIsLoading] = useState(true);`: Sets up a state variable `isLoading`. It starts as `true`, so the page will show a loading spinner by default.
+
+*   **`useEffect(() => { ... }, [session, status, router]);`**
+    *   This block of code runs after the component first renders and any time the `session`, `status`, or `router` objects change.
+    1.  It first checks `if (status === "loading") return;`. This prevents anything from happening while NextAuth is still trying to figure out if a user is logged in.
+    2.  It then checks `if (!session) { router.push("/auth/login"); }`. This is the **route protection**. If there is no session (user is not logged in), it redirects them to the login page.
+    3.  If the user *is* logged in, it calls the `fetchData()` function.
+
+*   **`const fetchData = async () => { ... };`**
+    *   This is an `async` function, meaning it can perform operations that take time (like network requests) without freezing the browser.
+    1.  It uses `Promise.all()` to make two `fetch` requests to the backend API at the same time, which is more efficient than doing them one after another.
+    2.  `fetch('/api/owner/dashboard/stats')`: This gets the main statistics.
+    3.  `fetch('/api/owner/venues')`: This gets the list of venues to show in the "Your Venues" card.
+    4.  After the data comes back, it uses `setStats(statsData)` and `setVenues(venuesData)` to update the component's state with the new data.
+    5.  In the `finally` block, it calls `setIsLoading(false)`. This is crucial because it runs whether the API calls succeeded or failed, ensuring the loading spinner is always removed.
+
+*   **Return Statement (JSX - The UI)**
+    *   `if (status === "loading" || isLoading) { ... }`: This logic shows a loading spinner if the session is still loading OR if our `fetchData` function is still running.
+    *   The rest of the code is the HTML-like structure of the page. It displays the `stats` and `venues` data that was fetched from the API and stored in the state. For example, it shows `stats.totalVenues` in a card and maps over the `venues` array to show a list of venues.

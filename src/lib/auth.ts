@@ -50,23 +50,35 @@ export const authOptions: NextAuthOptions = {
     signIn: "/auth/login",
   },
 
+  secret: process.env.NEXTAUTH_SECRET,
+
   session: { strategy: "jwt" },
 
   callbacks: {
     async jwt({ token, user }) {
-      // The `user` object is only available on the initial sign-in.
+      // If user object exists (initial sign-in), add its properties to the token.
       if (user) {
-        // Return a new object that includes the user's data.
-        return {
-          ...token, // Keep the original properties like `sub`, `iat`, `exp`
-          id: user.id,
-          role: user.role,
-          fullName: user.fullName,
-          avatarUrl: user.avatarUrl,
-          emailVerified: user.emailVerified,
-        } as any;
+        token.id = user.id;
+        token.role = user.role;
+        token.fullName = user.fullName;
+        token.avatarUrl = user.avatarUrl;
+        token.emailVerified = user.emailVerified;
+        return token;
       }
-      // On subsequent requests, the token is already populated.
+
+      // On subsequent calls, the token already exists. We need to refresh it
+      // in case user data has changed.
+      const dbUser = await prisma.user.findUnique({
+        where: { id: token.id as number },
+      });
+
+      if (dbUser) {
+        token.role = dbUser.role;
+        token.fullName = dbUser.fullName;
+        token.avatarUrl = dbUser.avatarUrl;
+        token.emailVerified = dbUser.emailVerified;
+      }
+
       return token;
     },
     async session({ session, token }) {

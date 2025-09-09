@@ -1,0 +1,73 @@
+### File: `src/app/api/sports/popular/route.ts`
+
+---
+
+### **Part 1: Core Concepts (The Basics)**
+
+This section explains the fundamental building blocks from Next.js and Prisma used in this file.
+
+*   **What is an API Route (in Next.js)?**
+    *   In Next.js, files inside the `pages/api` or `app/api` directory (like this one) are treated as API endpoints. This means they run on the server and can handle HTTP requests (like `GET`, `POST`, etc.). They are used to build your backend logic that your frontend (or other applications) can communicate with.
+
+*   **`NextResponse` (from `next/server`)**
+    *   **Purpose**: A utility provided by Next.js for creating HTTP responses in API routes. It allows you to easily send JSON data, set status codes, and manage headers.
+    *   **How it works**: `return NextResponse.json({ data: "some data" }, { status: 200 });`
+
+*   **Prisma Client (`prisma`)**
+    *   **Purpose**: An auto-generated query builder that makes it easy to interact with your database using TypeScript. It translates your TypeScript code into SQL queries.
+    *   **How it works**: You import `prisma` (usually from `@/lib/prisma`). Then you can use methods like `prisma.modelName.findMany()`, `prisma.modelName.create()`, `prisma.modelName.groupBy()`, etc., to perform database operations.
+
+*   **`groupBy()` Method (from Prisma Client)**
+    *   **Purpose**: Used to group records in your database based on one or more fields and then perform aggregate calculations (like `_count`, `_sum`, `_avg`) on those groups.
+    *   **How it works**: `prisma.modelName.groupBy({ by: ['fieldToGroup'], _count: { fieldToCount: true } });`
+    *   **In this file**: It's used to count how many venues offer each sport, effectively determining which sports are "popular."
+
+---
+
+### **Part 2: Code-Level Explanation**
+
+This section explains the code in `route.ts` line-by-line.
+
+*   **`import { NextResponse } from "next/server";`**
+    *   Imports the `NextResponse` class, which is used to construct the HTTP response for this API endpoint.
+
+*   **`import { prisma } from "@/lib/prisma";`**
+    *   Imports the Prisma Client instance, which is configured to connect to your database. This is how the API route will interact with the database.
+
+*   **`export async function GET() { ... }`**
+    *   This defines the main function that handles `GET` requests to this API route (`/api/sports/popular`).
+    *   The `async` keyword means this function will perform asynchronous operations (like database queries) and will use `await` to wait for them to complete.
+
+*   **`try { ... } catch (error) { ... }`**
+    *   This is a standard JavaScript error handling block.
+    *   The code that might cause an error (like database operations) goes inside the `try` block.
+    *   If an error occurs, the code inside the `catch (error)` block will run, allowing the API to send a proper error response instead of crashing.
+
+*   **`const sportsData = await prisma.court.groupBy({ ... });`**
+    *   This is the core database query.
+    *   `prisma.court.groupBy`: Groups `Court` records.
+    *   `by: ['sport']`: Groups the courts by their `sport` field (e.g., all "Badminton" courts together, all "Football" courts together).
+    *   `where: { venue: { approved: true } }`: **Important filter!** It only considers courts that belong to venues that have been `approved` by an administrator. This ensures only active, legitimate sports are shown.
+    *   `_count: { sport: true }`: For each sport group, it counts the number of courts.
+    *   `orderBy: { _count: { sport: 'desc' } }`: Sorts the results so the sports with the most courts (most popular) come first.
+    *   The `await` keyword pauses the function execution until the database query is complete and `sportsData` is populated.
+
+*   **`const sportImageMap: Record<string, string> = { ... };`**
+    *   This is a simple JavaScript object (a map or dictionary) that associates sport names (keys) with their corresponding image URLs (values). These image URLs are used on the frontend to display icons for popular sports.
+
+*   **`const popularSports = sportsData.map(sport => ({ ... }));`**
+    *   This line transforms the `sportsData` (which came directly from the database) into a more user-friendly format for the frontend.
+    *   `sport.name`: The name of the sport (e.g., "Badminton").
+    *   `sport.venueCount`: The count of venues offering that sport (from `_count.sport`).
+    *   `image: sportImageMap[sport.sport] || '/sports/default.jpg'`: It looks up the image URL from the `sportImageMap`. If a specific image is not found for a sport, it uses a `/sports/default.jpg` fallback image.
+
+*   **`if (popularSports.length === 0) { ... }`**
+    *   This is a fallback mechanism. If the database query returns no popular sports (e.g., on a fresh database with no data yet), it provides a default list of common sports with placeholder image URLs. This prevents the frontend from showing an empty or broken section.
+
+*   **`return NextResponse.json(popularSports);`**
+    *   If popular sports are found, this line sends the `popularSports` array back to the client as a JSON response. By default, `NextResponse.json()` sends a `200 OK` HTTP status code, indicating success.
+
+*   **`catch (error) { ... }`**
+    *   If any error occurs during the execution of the `try` block (e.g., database connection issue), this `catch` block will execute.
+    *   `console.error(...)`: Logs the error to the server's console for debugging purposes.
+    *   `return NextResponse.json({ error: "Failed to fetch popular sports" }, { status: 500 });`: Sends a `500 Internal Server Error` response to the client, indicating that something went wrong on the server side.

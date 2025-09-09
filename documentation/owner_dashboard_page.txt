@@ -1,0 +1,52 @@
+### File: `src/app/owner/dashboard/page.tsx`
+
+#### **1. File Overview**
+
+This file creates the main dashboard page for a facility owner. It's a client-side component (`"use client";`) responsible for displaying key statistics and overviews related to the owner's venues and bookings. It fetches data from two different API endpoints to populate the dashboard.
+
+---
+
+#### **2. Libraries & Hooks Used**
+
+*   **`next-auth/react` (`useSession`)**: This is a crucial hook from the NextAuth.js library. It's used to access the current user's session data, including their name, email, and role. It also provides a `status` which can be `"loading"`, `"authenticated"`, or `"unauthenticated"`.
+*   **`next/navigation` (`useRouter`)**: This hook provides access to the Next.js router, which is used here to redirect unauthenticated users to the login page.
+*   **`react` (`useState`, `useEffect`)**:
+    *   `useState` is used to manage the component's internal state:
+        *   `stats`: Stores the dashboard statistics fetched from the API.
+        *   `isLoading`: A boolean to track when data is being fetched, so a loading spinner can be shown.
+        *   `venues`: Stores a list of the owner's venues.
+    *   `useEffect` is used to trigger data fetching once the component mounts and the user's session is confirmed to be authenticated.
+*   **`next/link` (`Link`)**: The standard component for client-side navigation between pages in a Next.js app.
+*   **`@heroicons/react`**: A library of SVG icons used for UI elements.
+
+---
+
+#### **3. State Management**
+
+*   `const { data: session, status } = useSession();`: This line gets the current session data and authentication status. The page's logic heavily relies on this to protect the route and fetch data for the correct user.
+*   `const [stats, setStats] = useState<DashboardStats>({...});`: Initializes an object to hold all the key performance indicators (KPIs) for the dashboard, like total venues, bookings, earnings, etc.
+*   `const [isLoading, setIsLoading] = useState(true);`: Starts in a `true` state. The UI shows a loading spinner while this is true. It's set to `false` after all API calls are finished.
+*   `const [venues, setVenues] = useState<any[]>([]);`: Initializes an empty array to store the list of venues owned by the user.
+
+---
+
+#### **4. Workflow & Logic**
+
+1.  **Authentication Check**: The `useEffect` hook first checks the `status` from `useSession`. If the status is `"loading"`, it does nothing. If it's `"unauthenticated"`, it immediately redirects the user to `/auth/login` using `router.push()`.
+2.  **Data Fetching**: If the status is `"authenticated"`, the `fetchData` function is called inside the `useEffect` hook.
+    *   `fetchData` makes two parallel API calls using `Promise.all()` for efficiency:
+        1.  `fetch('/api/owner/dashboard/stats')`: Gets the key statistics for the dashboard.
+        2.  `fetch('/api/owner/venues')`: Gets the list of the owner's venues.
+    *   When the responses are received, it updates the component's state using `setStats(statsData)` and `setVenues(venuesData)`.
+    *   Finally, it sets `setIsLoading(false)` to hide the loading spinner and display the dashboard content.
+3.  **Rendering UI**: The component then renders the UI using the data stored in the `stats` and `venues` state variables.
+    *   It displays a welcome message with the owner's name (`session?.user?.fullName`).
+    *   It maps over the `statCards` array to display each statistic in its own card.
+    *   It shows a preview of the owner's top 3 venues, with a link to manage all of them.
+    *   It displays a "Recent Activity" feed based on the `stats.recentActivity` data.
+
+---
+
+#### **5. Key Functions**
+
+*   `fetchData()`: An asynchronous function defined inside the `useEffect` hook. Its sole purpose is to fetch all necessary data for the dashboard from the backend APIs and update the component's state.

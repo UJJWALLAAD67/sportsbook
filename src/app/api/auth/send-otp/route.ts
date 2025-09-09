@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { hash } from "bcryptjs";
 import { sendMail } from "@/lib/mailer";
+import { Prisma } from "@prisma/client";
 
 // Generate 6-digit OTP
 function generateOTP(): string {
@@ -13,15 +14,12 @@ export async function POST(request: Request) {
     const { email } = await request.json();
 
     if (!email) {
-      return NextResponse.json(
-        { error: "Email is required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Email is required" }, { status: 400 });
     }
 
     // Check if user exists
     const existingUser = await prisma.user.findUnique({
-      where: { email }
+      where: { email },
     });
 
     // If user exists and is already verified, no need to send OTP
@@ -35,7 +33,7 @@ export async function POST(request: Request) {
     // Check for pending registration in EmailOtp
     const pendingOtp = await prisma.emailOtp.findFirst({
       where: { email },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: "desc" },
     });
 
     // If no user and no pending registration, user needs to register first
@@ -55,7 +53,7 @@ export async function POST(request: Request) {
 
     // Delete any existing OTP for this email
     await prisma.emailOtp.deleteMany({
-      where: { email }
+      where: { email },
     });
 
     // Create new OTP record, preserving metadata if it exists (for pending registrations)
@@ -66,15 +64,15 @@ export async function POST(request: Request) {
         expiresAt,
         attempts: 0,
         verified: false,
-        metadata: pendingOtp?.metadata || null // Preserve pending registration data
-      }
+        metadata: pendingOtp?.metadata ?? Prisma.JsonNull, // ✅ safe for null
+      },
     });
 
     // Send OTP via email using the centralized mailer
     const emailHtml = `
       <div style="max-width: 600px; margin: 0 auto; padding: 20px; font-family: Arial, sans-serif;">
         <h2 style="color: #16a34a; text-align: center;">SportsBook Email Verification</h2>
-        <p>Hi ${existingUser?.fullName || 'there'},</p>
+        <p>Hi ${existingUser?.fullName || "there"},</p>
         <p>Your OTP for email verification is:</p>
         <div style="background: #f3f4f6; padding: 20px; text-align: center; margin: 20px 0; border-radius: 8px;">
           <h1 style="color: #1f2937; margin: 0; font-size: 32px; letter-spacing: 4px;">${otp}</h1>
@@ -86,17 +84,12 @@ export async function POST(request: Request) {
       </div>
     `;
 
-    await sendMail(
-      email,
-      "SportsBook - Email Verification OTP",
-      emailHtml
-    );
+    await sendMail(email, "SportsBook - Email Verification OTP", emailHtml);
 
     return NextResponse.json({
       success: true,
-      message: "OTP sent successfully to your email"
+      message: "OTP sent successfully to your email",
     });
-
   } catch (error) {
     console.error("Send OTP error:", error);
     return NextResponse.json(

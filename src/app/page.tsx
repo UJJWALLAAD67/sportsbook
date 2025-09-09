@@ -343,7 +343,7 @@ export default function Home() {
                       onError={(e) => {
                         // Fallback to placeholder if image fails to load
                         const target = e.target as HTMLImageElement;
-                        target.src = '/sports/default.jpg';
+                        target.src = '';
                       }}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">

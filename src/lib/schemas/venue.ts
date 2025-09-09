@@ -6,7 +6,7 @@ const courtSchema = z.object({
   id: z.number().optional(),
   name: z.string().min(1, "Court name is required"),
   sport: z.string().min(1, "Sport type is required"),
-  pricePerHour: z.coerce.number().min(0, "Price must be a non-negative number"), // coerces from string -> number
+  pricePerHour: z.coerce.number().min(0, "Price must be a non-negative number"),
   currency: z.string().min(1, "Currency is required"),
   openTime: z.coerce
     .number()
@@ -16,6 +16,7 @@ const courtSchema = z.object({
     .number()
     .min(1)
     .max(24, "Closing time must be between 1 and 24"),
+  imageUrl: z.string().url("Must be a valid URL").optional().or(z.literal('')),
 });
 
 // Venue schema
@@ -26,9 +27,10 @@ export const venueSchema = z.object({
   city: z.string().min(1, "City is required"),
   state: z.string().optional(),
   country: z.string().min(1, "Country is required"),
-  latitude: z.coerce.number().optional(), // coerces string input -> number
-  longitude: z.coerce.number().optional(), // coerces string input -> number
+  latitude: z.coerce.number().optional(),
+  longitude: z.coerce.number().optional(),
   amenities: z.array(z.string()),
+  imageUrl: z.string().url("Must be a valid URL").optional().or(z.literal('')),
   courts: z.array(courtSchema).min(1, "At least one court is required"),
 });
 

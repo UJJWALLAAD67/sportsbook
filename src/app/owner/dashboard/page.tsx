@@ -10,7 +10,7 @@ import {
   CurrencyDollarIcon,
   ChartBarIcon,
   UserGroupIcon,
-  PlusIcon
+  PlusIcon,
 } from "@heroicons/react/24/outline";
 
 interface DashboardStats {
@@ -62,25 +62,25 @@ export default function OwnerDashboard() {
     const fetchData = async () => {
       try {
         const [statsResponse, venuesResponse] = await Promise.all([
-          fetch('/api/owner/dashboard/stats'),
-          fetch('/api/owner/venues')
+          fetch("/api/owner/dashboard/stats"),
+          fetch("/api/owner/venues"),
         ]);
 
         if (statsResponse.ok) {
           const statsData = await statsResponse.json();
           setStats(statsData);
         } else {
-          console.error('Failed to fetch dashboard stats');
+          console.error("Failed to fetch dashboard stats");
         }
 
         if (venuesResponse.ok) {
           const venuesData = await venuesResponse.json();
           setVenues(venuesData);
         } else {
-          console.error('Failed to fetch venues');
+          console.error("Failed to fetch venues");
         }
       } catch (error) {
-        console.error('Error fetching dashboard data:', error);
+        console.error("Error fetching dashboard data:", error);
       } finally {
         setIsLoading(false);
       }
@@ -104,8 +104,8 @@ export default function OwnerDashboard() {
       icon: BuildingOfficeIcon,
       color: "text-blue-600",
       bgColor: "bg-blue-100",
-      change: `${stats.totalVenues > 0 ? 'All venues' : 'No venues yet'}`,
-      changeType: "neutral"
+      change: `${stats.totalVenues > 0 ? "All venues" : "No venues yet"}`,
+      changeType: "neutral",
     },
     {
       title: "Total Bookings",
@@ -113,8 +113,15 @@ export default function OwnerDashboard() {
       icon: CalendarDaysIcon,
       color: "text-green-600",
       bgColor: "bg-green-100",
-      change: `${stats.bookingGrowth > 0 ? '+' : ''}${stats.bookingGrowth}% from last month`,
-      changeType: stats.bookingGrowth > 0 ? "increase" : stats.bookingGrowth < 0 ? "decrease" : "neutral"
+      change: `${stats.bookingGrowth > 0 ? "+" : ""}${
+        stats.bookingGrowth
+      }% from last month`,
+      changeType:
+        stats.bookingGrowth > 0
+          ? "increase"
+          : stats.bookingGrowth < 0
+          ? "decrease"
+          : "neutral",
     },
     {
       title: "Total Earnings",
@@ -122,8 +129,15 @@ export default function OwnerDashboard() {
       icon: CurrencyDollarIcon,
       color: "text-yellow-600",
       bgColor: "bg-yellow-100",
-      change: `${stats.earningsGrowth > 0 ? '+' : ''}${stats.earningsGrowth}% from last month`,
-      changeType: stats.earningsGrowth > 0 ? "increase" : stats.earningsGrowth < 0 ? "decrease" : "neutral"
+      change: `${stats.earningsGrowth > 0 ? "+" : ""}${
+        stats.earningsGrowth
+      }% from last month`,
+      changeType:
+        stats.earningsGrowth > 0
+          ? "increase"
+          : stats.earningsGrowth < 0
+          ? "decrease"
+          : "neutral",
     },
     {
       title: "Active Venues",
@@ -132,7 +146,10 @@ export default function OwnerDashboard() {
       color: "text-purple-600",
       bgColor: "bg-purple-100",
       change: `${stats.activeVenues}/${stats.totalVenues} venues active`,
-      changeType: stats.activeVenues === stats.totalVenues && stats.totalVenues > 0 ? "increase" : "neutral"
+      changeType:
+        stats.activeVenues === stats.totalVenues && stats.totalVenues > 0
+          ? "increase"
+          : "neutral",
     },
     {
       title: "Today's Bookings",
@@ -140,8 +157,13 @@ export default function OwnerDashboard() {
       icon: UserGroupIcon,
       color: "text-indigo-600",
       bgColor: "bg-indigo-100",
-      change: stats.todayBookings > 0 ? `${stats.todayBookings} booking${stats.todayBookings > 1 ? 's' : ''} today` : "No bookings today",
-      changeType: stats.todayBookings > 0 ? "increase" : "neutral"
+      change:
+        stats.todayBookings > 0
+          ? `${stats.todayBookings} booking${
+              stats.todayBookings > 1 ? "s" : ""
+            } today`
+          : "No bookings today",
+      changeType: stats.todayBookings > 0 ? "increase" : "neutral",
     },
     {
       title: "Pending Approvals",
@@ -149,9 +171,12 @@ export default function OwnerDashboard() {
       icon: BuildingOfficeIcon,
       color: "text-red-600",
       bgColor: "bg-red-100",
-      change: stats.pendingApprovals > 0 ? `${stats.pendingApprovals} awaiting approval` : "All venues approved",
-      changeType: stats.pendingApprovals > 0 ? "neutral" : "increase"
-    }
+      change:
+        stats.pendingApprovals > 0
+          ? `${stats.pendingApprovals} awaiting approval`
+          : "All venues approved",
+      changeType: stats.pendingApprovals > 0 ? "neutral" : "increase",
+    },
   ];
 
   return (
@@ -169,7 +194,9 @@ export default function OwnerDashboard() {
 
         {/* Quick Actions */}
         <div className="mb-8">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">
+            Quick Actions
+          </h2>
           <div className="flex flex-wrap gap-4">
             <Link
               href="/owner/venues/new"
@@ -206,8 +233,12 @@ export default function OwnerDashboard() {
                     <Icon className={`w-6 h-6 ${stat.color}`} />
                   </div>
                   <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">{stat.title}</p>
-                    <p className="text-2xl font-semibold text-gray-900">{stat.value}</p>
+                    <p className="text-sm font-medium text-gray-600">
+                      {stat.title}
+                    </p>
+                    <p className="text-2xl font-semibold text-gray-900">
+                      {stat.value}
+                    </p>
                   </div>
                 </div>
                 <div className="mt-4">
@@ -232,7 +263,9 @@ export default function OwnerDashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
           <div className="bg-white rounded-xl shadow-sm p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Your Venues</h3>
+              <h3 className="text-lg font-semibold text-gray-900">
+                Your Venues
+              </h3>
               <Link
                 href="/owner/venues"
                 className="text-primary-600 hover:text-primary-700 text-sm font-medium"
@@ -243,22 +276,33 @@ export default function OwnerDashboard() {
             <div className="space-y-3">
               {venues.length > 0 ? (
                 venues.slice(0, 3).map((venue) => (
-                  <div key={venue.id} className="flex items-center p-3 bg-gray-50 rounded-lg">
-                    <div className={`w-3 h-3 rounded-full mr-3 ${
-                      venue.approved ? 'bg-green-500' : 'bg-yellow-500'
-                    }`}></div>
+                  <div
+                    key={venue.id}
+                    className="flex items-center p-3 bg-gray-50 rounded-lg"
+                  >
+                    <div
+                      className={`w-3 h-3 rounded-full mr-3 ${
+                        venue.approved ? "bg-green-500" : "bg-yellow-500"
+                      }`}
+                    ></div>
                     <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-900">{venue.name}</p>
+                      <p className="text-sm font-medium text-gray-900">
+                        {venue.name}
+                      </p>
                       <p className="text-xs text-gray-600">
-                        {venue.courts?.length || 0} court{(venue.courts?.length || 0) !== 1 ? 's' : ''} • {venue.city}
+                        {venue.courts?.length || 0} court
+                        {(venue.courts?.length || 0) !== 1 ? "s" : ""} •{" "}
+                        {venue.city}
                       </p>
                     </div>
-                    <span className={`px-2 py-1 text-xs rounded-full ${
-                      venue.approved 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-yellow-100 text-yellow-800'
-                    }`}>
-                      {venue.approved ? 'Active' : 'Pending'}
+                    <span
+                      className={`px-2 py-1 text-xs rounded-full ${
+                        venue.approved
+                          ? "bg-green-100 text-green-800"
+                          : "bg-yellow-100 text-yellow-800"
+                      }`}
+                    >
+                      {venue.approved ? "Active" : "Pending"}
                     </span>
                   </div>
                 ))
@@ -280,21 +324,36 @@ export default function OwnerDashboard() {
 
           {/* Recent Activity */}
           <div className="bg-white rounded-xl shadow-sm p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Recent Activity
+            </h3>
             <div className="space-y-3">
               {stats.recentActivity.length > 0 ? (
                 stats.recentActivity.map((activity) => (
-                  <div key={activity.id} className="flex items-center p-3 bg-gray-50 rounded-lg">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                      activity.type === 'booking' ? 'bg-green-100' : 
-                      activity.type === 'payment' ? 'bg-blue-100' : 'bg-yellow-100'
-                    }`}>
-                      {activity.type === 'booking' ? (
-                        <CalendarDaysIcon className={`w-4 h-4 ${
-                          activity.type === 'booking' ? 'text-green-600' : 
-                          activity.type === 'payment' ? 'text-blue-600' : 'text-yellow-600'
-                        }`} />
-                      ) : activity.type === 'payment' ? (
+                  <div
+                    key={activity.id}
+                    className="flex items-center p-3 bg-gray-50 rounded-lg"
+                  >
+                    <div
+                      className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                        activity.type === "booking"
+                          ? "bg-green-100"
+                          : activity.type === "payment"
+                          ? "bg-blue-100"
+                          : "bg-yellow-100"
+                      }`}
+                    >
+                      {activity.type === "booking" ? (
+                        <CalendarDaysIcon
+                          className={`w-4 h-4 ${
+                            activity.type === "booking"
+                              ? "text-green-600"
+                              : activity.type === "payment"
+                              ? "text-blue-600"
+                              : "text-yellow-600"
+                          }`}
+                        />
+                      ) : activity.type === "payment" ? (
                         <CurrencyDollarIcon className="w-4 h-4 text-blue-600" />
                       ) : (
                         <BuildingOfficeIcon className="w-4 h-4 text-yellow-600" />
@@ -303,10 +362,12 @@ export default function OwnerDashboard() {
                     <div className="ml-3 flex-1">
                       <p className="text-sm font-medium text-gray-900 leading-tight">
                         {activity.message}
-                        {activity.amount && ` - ₹${activity.amount.toLocaleString()}`}
+                        {activity.amount &&
+                          ` - ₹${activity.amount.toLocaleString()}`}
                       </p>
                       <p className="text-xs text-gray-600">
-                        {activity.user && `by ${activity.user} • `}{activity.timeAgo}
+                        {activity.user && `by ${activity.user} • `}
+                        {activity.timeAgo}
                       </p>
                     </div>
                   </div>

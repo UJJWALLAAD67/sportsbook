@@ -38,7 +38,16 @@ export async function GET() {
       );
     }
 
-    return NextResponse.json(owner.venues);
+    // Convert price from Paisa to Rupees for each court before sending
+    const venuesForFrontend = owner.venues.map(venue => ({
+      ...venue,
+      courts: venue.courts.map(court => ({
+        ...court,
+        pricePerHour: court.pricePerHour / 100,
+      })),
+    }));
+
+    return NextResponse.json(venuesForFrontend);
   } catch (error) {
     console.error("Error fetching owner venues:", error);
     return NextResponse.json(
@@ -114,10 +123,12 @@ export async function POST(request: Request) {
           state,
           country,
           amenities,
+          imageUrl: validatedData.data.imageUrl, // Add venue image URL
           approved: false,
           courts: {
             create: courts.map((court) => ({
               ...court,
+              pricePerHour: Math.round(court.pricePerHour * 100),
             })),
           },
         },

@@ -62,7 +62,7 @@ model Venue {
   latitude    Float?
   longitude   Float?
   amenities   String[]      @default([]) // e.g., ["parking", "lights"]
-  photos      String[]      @default([]) // Cloudinary URLs or public_ids
+  imageUrl    String?       // Single image URL for the venue
   approved    Boolean       @default(false)
   rating      Float? // optional aggregate
   courts      Court[]
@@ -84,6 +84,7 @@ model Court {
   currency     String    @default("INR")
   openTime     Int // hour in 24h, e.g., 6
   closeTime    Int // hour in 24h, e.g., 22
+  imageUrl     String?   // Single image URL for the court
   bookings     Booking[]
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
@@ -152,7 +153,7 @@ model EmailOtp {
   expiresAt DateTime
   attempts  Int      @default(0)
   verified  Boolean  @default(false)
-  metadata  String?  // Store pending registration data as JSON
+  metadata  Json?  // Store pending registration data as JSON
   createdAt DateTime @default(now())
 
   @@index([email])

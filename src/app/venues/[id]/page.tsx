@@ -17,6 +17,7 @@ import {
 import { StarIcon as StarSolidIcon } from "@heroicons/react/24/solid";
 
 interface Venue {
+  imageUrl: string;
   id: number;
   name: string;
   slug: string;
@@ -110,7 +111,7 @@ export default function VenueDetailPage() {
     }
     
     // Navigate to booking page
-    router.push(`/book/${venueId}/${courtId}`);
+    router.push(`/venues/${venueId}/book?courtId=${courtId}`);
   };
 
   const renderStars = (rating: number) => {
@@ -185,10 +186,10 @@ export default function VenueDetailPage() {
             {/* Venue Header */}
             <div className="bg-white rounded-xl shadow-sm p-6">
               {/* Photo Gallery */}
-              {venue.photos && venue.photos.length > 0 ? (
+              {venue.imageUrl ? (
                 <div className="h-64 rounded-lg overflow-hidden mb-6">
                   <img
-                    src={venue.photos[0]}
+                    src={venue.imageUrl}
                     alt={venue.name}
                     className="w-full h-full object-cover"
                   />
@@ -360,69 +361,7 @@ export default function VenueDetailPage() {
                 </div>
               )}
             </div>
-          </div>
-
-          {/* Sidebar */}
-          <div className="lg:col-span-1">
-            <div className="sticky top-8 space-y-6">
-              {/* Quick Book */}
-              <div className="bg-white rounded-xl shadow-sm p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Book</h3>
-                
-                {selectedCourt ? (
-                  <div className="space-y-4">
-                    <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
-                      <h4 className="font-medium text-primary-900">
-                        {venue.courts.find(c => c.id === selectedCourt)?.name}
-                      </h4>
-                      <p className="text-sm text-primary-700">
-                        {venue.courts.find(c => c.id === selectedCourt)?.sport}
-                      </p>
-                      <p className="text-lg font-semibold text-primary-900 mt-2">
-                        ₹{Math.round((venue.courts.find(c => c.id === selectedCourt)?.pricePerHour || 0) / 100)}/hr
-                      </p>
-                    </div>
-                    
-                    <button
-                      onClick={() => handleBookCourt(selectedCourt)}
-                      className="w-full bg-primary-600 text-white py-3 px-4 rounded-lg hover:bg-primary-700 transition-colors font-medium"
-                    >
-                      Book Now
-                    </button>
-                  </div>
-                ) : (
-                  <p className="text-gray-600 text-center py-4">
-                    Select a court to book
-                  </p>
-                )}
-              </div>
-
-              {/* Owner Info */}
-              <div className="bg-white rounded-xl shadow-sm p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Venue Owner</h3>
-                <div className="flex items-center">
-                  <UserIcon className="w-12 h-12 text-gray-400 mr-3" />
-                  <div>
-                    <p className="font-medium text-gray-900">{venue.owner.name}</p>
-                    {venue.owner.businessName && (
-                      <p className="text-sm text-gray-600">{venue.owner.businessName}</p>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Contact/Support */}
-              <div className="bg-white rounded-xl shadow-sm p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Need Help?</h3>
-                <p className="text-gray-600 text-sm mb-4">
-                  Have questions about booking or the facility?
-                </p>
-                <button className="w-full border border-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-50 transition-colors font-medium">
-                  Contact Support
-                </button>
-              </div>
-            </div>
-          </div>
+          </div>          
         </div>
       </div>
     </div>

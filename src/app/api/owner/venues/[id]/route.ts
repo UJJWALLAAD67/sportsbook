@@ -123,7 +123,16 @@ export async function PUT(
     await prisma.$transaction(async (tx) => {
       await tx.venue.update({
         where: { id: venueId },
-        data: venueData,
+        data: {
+          name: venueData.name,
+          description: venueData.description,
+          address: venueData.address,
+          city: venueData.city,
+          state: venueData.state,
+          country: venueData.country,
+          amenities: venueData.amenities,
+          imageUrl: venueData.imageUrl,
+        },
       });
 
       if (courtsToDelete.length > 0) {
@@ -136,10 +145,11 @@ export async function PUT(
         const courtPayload = {
           name: court.name,
           sport: court.sport,
-          pricePerHour: Math.round(court.pricePerHour * 100), // Rupees → Paisa
+          pricePerHour: Math.round(court.pricePerHour * 100),
           currency: court.currency,
           openTime: court.openTime,
           closeTime: court.closeTime,
+          imageUrl: court.imageUrl,
         };
 
         if (court.id) {

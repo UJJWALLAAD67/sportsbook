@@ -93,7 +93,7 @@ export default function RegisterForm() {
 
       const result = await res.json();
 
-      if (res.ok && result.ok) {
+      if (res.ok && result.success) {
         router.push("/auth/login?verified=true");
       } else {
         setError(result.error || "Invalid OTP");
