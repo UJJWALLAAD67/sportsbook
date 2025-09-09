@@ -152,6 +152,7 @@ model EmailOtp {
   expiresAt DateTime
   attempts  Int      @default(0)
   verified  Boolean  @default(false)
+  metadata  String?  // Store pending registration data as JSON
   createdAt DateTime @default(now())
 
   @@index([email])

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { compare } from "bcryptjs";
+import { Role } from "@/generated/prisma";
 
 export async function POST(request: Request) {
   try {
@@ -67,27 +68,55 @@ export async function POST(request: Request) {
       );
     }
 
-    await prisma.$transaction([
-      prisma.emailOtp.update({
-        where: { id: otpRecord.id },
-        data: { verified: true }
-      }),
-      prisma.user.update({
-        where: { email },
-        data: { emailVerified: true }
-      })
-    ]);
+    // Parse the stored user data from metadata
+    let userData;
+    try {
+      userData = JSON.parse(otpRecord.metadata || '{}');
+    } catch (error) {
+      return NextResponse.json(
+        { error: "Invalid registration data. Please start registration again." },
+        { status: 400 }
+      );
+    }
 
-    await prisma.emailOtp.deleteMany({
-      where: {
-        email,
-        id: { not: otpRecord.id }
+    if (!userData.email || !userData.passwordHash) {
+      return NextResponse.json(
+        { error: "Incomplete registration data. Please start registration again." },
+        { status: 400 }
+      );
+    }
+
+    // Create the user and clean up OTP in a single transaction
+    await prisma.$transaction(async (tx) => {
+      // Create the user with verified email
+      const newUser = await tx.user.create({
+        data: {
+          email: userData.email,
+          passwordHash: userData.passwordHash,
+          fullName: userData.fullName,
+          role: userData.role,
+          emailVerified: true, // User is verified since they confirmed OTP
+        },
+      });
+
+      // If role is OWNER, create the FacilityOwner profile
+      if (userData.role === Role.OWNER) {
+        await tx.facilityOwner.create({
+          data: {
+            userId: newUser.id,
+          },
+        });
       }
+
+      // Delete all OTPs for this email (no need to keep them after successful verification)
+      await tx.emailOtp.deleteMany({
+        where: { email: userData.email }
+      });
     });
 
     return NextResponse.json({
       success: true,
-      message: "Email verified successfully!"
+      message: "Email verified and account created successfully!"
     });
 
   } catch (error) {

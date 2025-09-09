@@ -15,27 +15,29 @@ const signupSchema = z.object({
   role: z.enum([Role.USER, Role.OWNER]).optional().default(Role.USER),
 });
 
-// Helper to create + send OTP within a transaction
-async function createAndSendOtp(email: string, tx: Prisma.TransactionClient) {
+// Helper to create OTP for pending registration
+async function createPendingRegistrationOtp(email: string, userData: any) {
   const otp = crypto.randomInt(100000, 999999).toString();
   const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes validity
   const tokenHash = await bcrypt.hash(otp, 10);
 
-  // Note: Your schema should handle potential duplicate OTPs for the same email
-  // by either cleaning up old ones or having a unique constraint.
-  await tx.emailOtp.create({
+  // Clean up any existing OTPs for this email first
+  await prisma.emailOtp.deleteMany({
+    where: { email }
+  });
+
+  // Store the pending user data along with the OTP
+  await prisma.emailOtp.create({
     data: {
       email,
       tokenHash,
       expiresAt,
+      // Store user registration data as JSON to create user after verification
+      metadata: JSON.stringify(userData)
     },
   });
 
-  await sendMail(
-    email,
-    "Your SportsBook Verification Code",
-    `<p>Your verification code is: <b>${otp}</b></p><p>It is valid for 5 minutes.</p>`
-  );
+  return otp;
 }
 
 export async function POST(req: Request) {
@@ -62,33 +64,32 @@ export async function POST(req: Request) {
 
     const passwordHash = await hashPassword(password);
 
-    // Create user, owner profile (if applicable), and OTP in one transaction
-    await prisma.$transaction(async (tx) => {
-      const newUser = await tx.user.create({
-        data: {
-          email,
-          passwordHash,
-          fullName,
-          role,
-          emailVerified: false,
-        },
-      });
+    // Store pending registration data and create OTP (no user created yet)
+    const pendingUserData = {
+      email,
+      passwordHash,
+      fullName,
+      role
+    };
 
-      // ✅ FIX: If the role is OWNER, create the linked FacilityOwner profile
-      if (role === Role.OWNER) {
-        await tx.facilityOwner.create({
-          data: {
-            userId: newUser.id,
-          },
-        });
-      }
+    const otp = await createPendingRegistrationOtp(email, pendingUserData);
 
-      await createAndSendOtp(newUser.email, tx);
-    });
+    // Send email outside of transaction to prevent timeout
+    try {
+      await sendMail(
+        email,
+        "Your SportsBook Verification Code",
+        `<p>Your verification code is: <b>${otp}</b></p><p>It is valid for 5 minutes.</p>`
+      );
+    } catch (emailError) {
+      console.error('Email sending failed:', emailError);
+      // Don't fail the registration if email fails
+      // User can request OTP resend via /api/auth/send-otp
+    }
 
     return NextResponse.json(
-      { ok: true, message: "OTP sent to email for verification." },
-      { status: 201 }
+      { ok: true, message: "Please verify your email. OTP sent to your email address." },
+      { status: 200 }
     );
   } catch (err) {
     console.log(err,"---------------")

@@ -59,111 +59,7 @@ export default function FacilityApprovalsPage() {
   const [showCommentModal, setShowCommentModal] = useState<{ venueId: number; action: "approve" | "reject" } | null>(null);
   const [comments, setComments] = useState("");
   
-  // Mock data - replace with actual API call
-  const mockVenues: Venue[] = [
-    {
-      id: 3,
-      name: "Football Ground Central",
-      description: "Full-sized football ground with synthetic turf and floodlights. Perfect for 11v11 matches and training sessions.",
-      address: "789 Field Road",
-      city: "Mumbai",
-      state: "Maharashtra", 
-      country: "India",
-      amenities: ["Parking", "Lighting", "Changing Rooms", "Shower"],
-      photos: [],
-      approved: false,
-      owner: {
-        id: 3,
-        fullName: "Vikram Patel",
-        email: "vikram@example.com",
-        businessName: "Central Sports Ltd"
-      },
-      courts: [
-        {
-          id: 5,
-          name: "Main Field",
-          sport: "Football",
-          pricePerHour: 3000,
-          openTime: 6,
-          closeTime: 22
-        }
-      ],
-      createdAt: "2024-03-01T09:00:00Z"
-    },
-    {
-      id: 5,
-      name: "Premium Squash Club",
-      description: "State-of-the-art squash facility with 4 glass-backed courts and professional lighting.",
-      address: "101 Squash Avenue", 
-      city: "Pune",
-      state: "Maharashtra",
-      country: "India",
-      amenities: ["Parking", "Air Conditioning", "Equipment Rental", "Cafeteria", "Wi-Fi"],
-      photos: [],
-      approved: false,
-      owner: {
-        id: 5,
-        fullName: "Anita Sharma",
-        email: "anita@premiumsquash.com",
-        businessName: "Premium Sports Facilities"
-      },
-      courts: [
-        {
-          id: 10,
-          name: "Court 1",
-          sport: "Squash",
-          pricePerHour: 1800,
-          openTime: 6,
-          closeTime: 23
-        },
-        {
-          id: 11,
-          name: "Court 2", 
-          sport: "Squash",
-          pricePerHour: 1800,
-          openTime: 6,
-          closeTime: 23
-        }
-      ],
-      createdAt: "2024-02-28T16:30:00Z"
-    },
-    {
-      id: 7,
-      name: "Volleyball Academy",
-      description: "Indoor volleyball facility with 3 professional courts and training equipment.",
-      address: "555 Volleyball Street",
-      city: "Delhi",
-      state: "Delhi",
-      country: "India", 
-      amenities: ["Parking", "Changing Rooms", "Equipment Rental", "Seating Area"],
-      photos: [],
-      approved: false,
-      owner: {
-        id: 7,
-        fullName: "Ravi Kumar",
-        email: "ravi@volleyballacademy.com"
-      },
-      courts: [
-        {
-          id: 15,
-          name: "Court A",
-          sport: "Volleyball",
-          pricePerHour: 1500,
-          openTime: 7,
-          closeTime: 21
-        },
-        {
-          id: 16,
-          name: "Court B",
-          sport: "Volleyball", 
-          pricePerHour: 1500,
-          openTime: 7,
-          closeTime: 21
-        }
-      ],
-      createdAt: "2024-02-26T11:45:00Z"
-    }
-  ];
+  // Removed mockVenues; will fetch from API instead
 
   useEffect(() => {
     if (status === "loading") return;
@@ -173,23 +69,42 @@ export default function FacilityApprovalsPage() {
       return;
     }
 
-    // Simulate API loading
-    setIsLoading(true);
-    setTimeout(() => {
-      setVenues(mockVenues.filter(v => !v.approved)); // Only show pending venues
-      setIsLoading(false);
-    }, 1000);
+    const fetchVenues = async () => {
+      setIsLoading(true);
+      try {
+        const res = await fetch('/api/admin/facilities');
+        if (res.ok) {
+          const data: Venue[] = await res.json();
+          setVenues(data);
+        } else {
+          console.error('Failed to fetch pending venues');
+          setVenues([]);
+        }
+      } catch (error) {
+        console.error('Error fetching pending venues:', error);
+        setVenues([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchVenues();
   }, [session, status, router]);
 
   const handleApprovalAction = async (venueId: number, action: "approve" | "reject", comments?: string) => {
     setIsProcessing(venueId);
     
     try {
-      // TODO: Implement actual API call
-      console.log(`${action} venue ${venueId}`, { comments });
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const res = await fetch('/api/admin/facilities', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ venueId, action, comments })
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `Failed to ${action} venue`);
+      }
       
       // Remove from pending list
       setVenues(prev => prev.filter(v => v.id !== venueId));

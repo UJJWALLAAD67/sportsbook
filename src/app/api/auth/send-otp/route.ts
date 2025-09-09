@@ -1,23 +1,12 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { hash } from "bcryptjs";
-import nodemailer from "nodemailer";
+import { sendMail } from "@/lib/mailer";
 
 // Generate 6-digit OTP
 function generateOTP(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
-
-// Create email transporter
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: parseInt(process.env.SMTP_PORT || "587"),
-  secure: process.env.SMTP_SECURE === "true",
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-});
 
 export async function POST(request: Request) {
   try {
@@ -35,17 +24,25 @@ export async function POST(request: Request) {
       where: { email }
     });
 
-    if (!existingUser) {
-      return NextResponse.json(
-        { error: "User not found" },
-        { status: 404 }
-      );
-    }
-
-    if (existingUser.emailVerified) {
+    // If user exists and is already verified, no need to send OTP
+    if (existingUser && existingUser.emailVerified) {
       return NextResponse.json(
         { error: "Email already verified" },
         { status: 400 }
+      );
+    }
+
+    // Check for pending registration in EmailOtp
+    const pendingOtp = await prisma.emailOtp.findFirst({
+      where: { email },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    // If no user and no pending registration, user needs to register first
+    if (!existingUser && (!pendingOtp || !pendingOtp.metadata)) {
+      return NextResponse.json(
+        { error: "Please complete registration first" },
+        { status: 404 }
       );
     }
 
@@ -61,39 +58,39 @@ export async function POST(request: Request) {
       where: { email }
     });
 
-    // Create new OTP record
+    // Create new OTP record, preserving metadata if it exists (for pending registrations)
     await prisma.emailOtp.create({
       data: {
         email,
         tokenHash: hashedOtp,
         expiresAt,
         attempts: 0,
-        verified: false
+        verified: false,
+        metadata: pendingOtp?.metadata || null // Preserve pending registration data
       }
     });
 
-    // Send OTP via email
-    const mailOptions = {
-      from: process.env.SMTP_FROM_EMAIL,
-      to: email,
-      subject: "SportsBook - Email Verification OTP",
-      html: `
-        <div style="max-width: 600px; margin: 0 auto; padding: 20px; font-family: Arial, sans-serif;">
-          <h2 style="color: #2563eb; text-align: center;">SportsBook Email Verification</h2>
-          <p>Hi ${existingUser.fullName},</p>
-          <p>Your OTP for email verification is:</p>
-          <div style="background: #f3f4f6; padding: 20px; text-align: center; margin: 20px 0; border-radius: 8px;">
-            <h1 style="color: #1f2937; margin: 0; font-size: 32px; letter-spacing: 4px;">${otp}</h1>
-          </div>
-          <p>This OTP will expire in 10 minutes.</p>
-          <p>If you didn't request this verification, please ignore this email.</p>
-          <br>
-          <p>Best regards,<br>SportsBook Team</p>
+    // Send OTP via email using the centralized mailer
+    const emailHtml = `
+      <div style="max-width: 600px; margin: 0 auto; padding: 20px; font-family: Arial, sans-serif;">
+        <h2 style="color: #16a34a; text-align: center;">SportsBook Email Verification</h2>
+        <p>Hi ${existingUser?.fullName || 'there'},</p>
+        <p>Your OTP for email verification is:</p>
+        <div style="background: #f3f4f6; padding: 20px; text-align: center; margin: 20px 0; border-radius: 8px;">
+          <h1 style="color: #1f2937; margin: 0; font-size: 32px; letter-spacing: 4px;">${otp}</h1>
         </div>
-      `
-    };
+        <p>This OTP will expire in 10 minutes.</p>
+        <p>If you didn't request this verification, please ignore this email.</p>
+        <br>
+        <p>Best regards,<br>SportsBook Team</p>
+      </div>
+    `;
 
-    await transporter.sendMail(mailOptions);
+    await sendMail(
+      email,
+      "SportsBook - Email Verification OTP",
+      emailHtml
+    );
 
     return NextResponse.json({
       success: true,

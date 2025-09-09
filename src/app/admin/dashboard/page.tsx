@@ -49,21 +49,46 @@ export default function AdminDashboard() {
       return;
     }
 
-    // TODO: Fetch actual stats from API
-    // For now, we'll use mock data
-    setTimeout(() => {
-      setStats({
-        totalUsers: 1247,
-        totalFacilityOwners: 89,
-        totalVenues: 156,
-        totalBookings: 3421,
-        pendingApprovals: 7,
-        totalRevenue: 892340,
-        activeUsers: 567,
-        reportedIssues: 3,
-      });
-      setIsLoading(false);
-    }, 1000);
+    // Fetch actual stats from API
+    const fetchStats = async () => {
+      try {
+        const response = await fetch('/api/admin/dashboard/stats');
+        if (response.ok) {
+          const data = await response.json();
+          setStats(data);
+        } else {
+          console.error('Failed to fetch admin stats:', response.statusText);
+          // Fallback to empty stats on error
+          setStats({
+            totalUsers: 0,
+            totalFacilityOwners: 0,
+            totalVenues: 0,
+            totalBookings: 0,
+            pendingApprovals: 0,
+            totalRevenue: 0,
+            activeUsers: 0,
+            reportedIssues: 0,
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching admin stats:', error);
+        // Fallback to empty stats on error
+        setStats({
+          totalUsers: 0,
+          totalFacilityOwners: 0,
+          totalVenues: 0,
+          totalBookings: 0,
+          pendingApprovals: 0,
+          totalRevenue: 0,
+          activeUsers: 0,
+          reportedIssues: 0,
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchStats();
   }, [session, status, router]);
 
   if (status === "loading" || isLoading) {
