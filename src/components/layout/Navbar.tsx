@@ -179,7 +179,7 @@ const Navbar: React.FC = () => {
               ) : (
                 <Link
                   href="/auth/login"
-                  className="rounded-md px-3 py-2 text-sm font-medium text-gray-700 hover:text-green-600 transition-colors"
+                  className="rounded-md px-3 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 transition-colors"
                 >
                   Login / Sign up
                 </Link>
@@ -230,7 +230,7 @@ const Navbar: React.FC = () => {
             ) : (
               <Link
                 href="/auth/login"
-                className="block rounded-md px-3 py-2 text-base font-medium text-gray-700 hover:bg-gray-50 hover:text-green-600"
+                className="block rounded-md px-3 py-2 text-base font-medium text-white bg-primary-600 hover:bg-primary-700 transition-colors"
               >
                 Login / Sign up
               </Link>

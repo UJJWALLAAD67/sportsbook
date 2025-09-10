@@ -4,16 +4,13 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
-import {
-  CalendarDaysIcon,
-  ClockIcon,
-  CurrencyDollarIcon,
-  UserIcon,
-  BuildingOfficeIcon,
-  MapPinIcon,
-  ExclamationTriangleIcon,
-  CheckCircleIcon,
+import { TrashIcon, PlusIcon, ArrowLeftIcon, CheckCircleIcon, BuildingOfficeIcon, CalendarDaysIcon, ClockIcon, ExclamationTriangleIcon,
 } from "@heroicons/react/24/outline";
+import { loadStripe } from "@stripe/stripe-js";
+
+const stripePromise = loadStripe(
+  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
+);
 
 // Native JavaScript date utility functions
 const formatDate = (date: Date, formatType: string): string => {
@@ -199,7 +196,6 @@ export default function BookingPage() {
       if (response.ok) {
         const data = await response.json();
         setExistingBookings(data.bookings || []);
-        setAvailableSlots(data.timeSlots || []);
         setTimeSlots(data.timeSlots || []);
       } else {
         console.error("Failed to fetch availability");
@@ -251,6 +247,7 @@ export default function BookingPage() {
     if (!court || !venue || selectedTimeSlots.length === 0) return;
 
     setIsBooking(true);
+    setError(null);
     try {
       const startHour = selectedTimeSlots[0];
       const startTime = new Date(selectedDate);
@@ -259,31 +256,72 @@ export default function BookingPage() {
       const endTime = new Date(startTime);
       endTime.setHours(startHour + duration, 0, 0, 0);
 
-      const bookingData = {
-        courtId,
-        startTime: startTime.toISOString(),
-        endTime: endTime.toISOString(),
-        totalAmount: court.pricePerHour * duration,
-      };
-
-      const response = await fetch("/api/bookings", {
+      // 1. Create booking record in your database
+      const bookingResponse = await fetch("/api/bookings", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(bookingData),
+        body: JSON.stringify({
+          courtId,
+          startTime: startTime.toISOString(),
+          endTime: endTime.toISOString(),
+          totalAmount: court.pricePerHour * duration,
+          userNotes,
+        }),
       });
 
-      if (response.ok) {
-        const booking = await response.json();
-        router.push(`/bookings/${booking.id}`);
-      } else {
-        const errorData = await response.json();
-        setError(errorData.error || "Failed to create booking");
+      if (!bookingResponse.ok) {
+        const errorData = await bookingResponse.json();
+        throw new Error(errorData.error || "Failed to create booking");
       }
-    } catch (error) {
-      console.error("Error creating booking:", error);
-      setError("Failed to create booking");
+
+      const booking = await bookingResponse.json();
+
+      // 2. Create Payment Intent with Stripe
+      const stripe = await stripePromise;
+      if (!stripe) {
+        throw new Error("Stripe.js failed to load.");
+      }
+
+      const paymentIntentResponse = await fetch("/api/create-payment-intent", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ bookingId: booking.id }),
+      });
+
+      if (!paymentIntentResponse.ok) {
+        const errorData = await paymentIntentResponse.json();
+        throw new Error(errorData.error || "Failed to create payment intent");
+      }
+
+      const { clientSecret } = await paymentIntentResponse.json();
+
+      // 3. Confirm the payment on the client side
+      const { error: confirmError } = await stripe.confirmCardPayment(clientSecret, {
+        payment_method: {
+          // For this example, we assume a default payment method or redirect flow
+          // In a real app, you'd collect card details here using PaymentElement
+          // or redirect to Stripe Checkout.
+          // For now, we'll rely on the PaymentIntent being created with a default source
+          // or a redirect that handles the payment method.
+          card: { token: 'tok_visa' }, // This is a test token, replace with actual card element data
+        },
+        return_url: window.location.origin + `/bookings/${booking.id}`, // URL to redirect after payment
+      });
+
+      if (confirmError) {
+        setError(confirmError.message || "Payment failed");
+        // Optionally, you might want to cancel the booking in your DB here
+        // or mark the payment as failed.
+      } else {
+        setBookingSuccess(true);
+      }
+    } catch (err: any) {
+      console.error("Error during booking or payment:", err);
+      setError(err.message || "An unexpected error occurred.");
     } finally {
       setIsBooking(false);
     }
@@ -341,7 +379,9 @@ export default function BookingPage() {
               <p className="text-sm text-gray-600">
                 {formatDate(selectedDate, "EEEE, MMMM d, yyyy")} at{" "}
                 {selectedTimeSlots.length > 0
-                  ? `${selectedTimeSlots[0].toString().padStart(2, "0")}:00`
+                  ? `${selectedTimeSlots[0]
+                            .toString()
+                            .padStart(2, "0")}:00`
                   : ""}
               </p>
               <p className="text-sm text-gray-600">
@@ -481,7 +521,7 @@ export default function BookingPage() {
               </h3>
 
               <div className="grid grid-cols-4 sm:grid-cols-6 gap-3">
-                {availableSlots.map((slot) => {
+                {timeSlots.map((slot) => {
                   const isSelected = isSlotSelected(slot.hour);
                   const canSelect =
                     slot.available && isSlotAvailable(slot.hour);
@@ -512,7 +552,7 @@ export default function BookingPage() {
                 })}
               </div>
 
-              {availableSlots.length === 0 && (
+              {timeSlots.length === 0 && (
                 <div className="text-center py-8 text-gray-500">
                   <p>No time slots available for the selected date.</p>
                 </div>

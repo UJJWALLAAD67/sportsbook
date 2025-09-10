@@ -2,7 +2,7 @@ import NextAuth, { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
 import { verifyPassword } from "@/lib/hash";
-import { Role } from "@/generated/prisma";
+import { Role } from "@prisma/client";
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -84,11 +84,11 @@ export const authOptions: NextAuthOptions = {
     async session({ session, token }) {
       // The token contains all our custom data. We pass it to the session.
       if (session.user) {
-        session.user.id = token.id;
-        session.user.role = token.role;
-        session.user.fullName = token.fullName;
-        session.user.avatarUrl = token.avatarUrl;
-        session.user.emailVerified = token.emailVerified;
+        session.user.id = token.id as number;
+        session.user.role = token.role as Role;
+        session.user.fullName = token.fullName as string;
+        session.user.avatarUrl = token.avatarUrl as string;
+        session.user.emailVerified = token.emailVerified as boolean;
       }
       return session;
     },

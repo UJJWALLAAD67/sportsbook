@@ -33,6 +33,12 @@ interface DashboardStats {
   }>;
 }
 
+interface PopularSport {
+  name: string;
+  venueCount: number;
+  image: string;
+}
+
 export default function OwnerDashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -49,6 +55,7 @@ export default function OwnerDashboard() {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [venues, setVenues] = useState<any[]>([]);
+  const [popularSports, setPopularSports] = useState<PopularSport[]>([]);
 
   useEffect(() => {
     if (status === "loading") return;
@@ -61,9 +68,10 @@ export default function OwnerDashboard() {
     // Fetch actual stats and venues from API
     const fetchData = async () => {
       try {
-        const [statsResponse, venuesResponse] = await Promise.all([
+        const [statsResponse, venuesResponse, sportsResponse] = await Promise.all([
           fetch("/api/owner/dashboard/stats"),
           fetch("/api/owner/venues"),
+          fetch("/api/sports/popular"),
         ]);
 
         if (statsResponse.ok) {
@@ -78,6 +86,13 @@ export default function OwnerDashboard() {
           setVenues(venuesData);
         } else {
           console.error("Failed to fetch venues");
+        }
+
+        if (sportsResponse.ok) {
+          const sportsData = await sportsResponse.json();
+          setPopularSports(sportsData);
+        } else {
+          console.error("Failed to fetch popular sports");
         }
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
@@ -280,11 +295,11 @@ export default function OwnerDashboard() {
                     key={venue.id}
                     className="flex items-center p-3 bg-gray-50 rounded-lg"
                   >
-                    <div
-                      className={`w-3 h-3 rounded-full mr-3 ${
-                        venue.approved ? "bg-green-500" : "bg-yellow-500"
-                      }`}
-                    ></div>
+                    <img
+                      src={venue.image || "/placeholder.svg"}
+                      alt={venue.name}
+                      className="w-16 h-16 rounded-md object-cover mr-4"
+                    />
                     <div className="flex-1">
                       <p className="text-sm font-medium text-gray-900">
                         {venue.name}

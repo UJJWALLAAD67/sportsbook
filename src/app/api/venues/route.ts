@@ -30,7 +30,7 @@ export async function GET(request: Request) {
           { name: { contains: search, mode: "insensitive" } },
           { description: { contains: search, mode: "insensitive" } },
           { address: { contains: search, mode: "insensitive" } },
-          { city: { contains: search, mode: "insensitive" } },
+          { city: { contains: city, mode: "insensitive" } },
         ],
       });
     }
@@ -124,7 +124,6 @@ export async function GET(request: Request) {
       }),
       prisma.venue.count({ where }),
     ]);
-
     // Transform venues with computed fields
     let transformedVenues = venues.map((venue) => {
       // Calculate average rating
@@ -139,13 +138,13 @@ export async function GET(request: Request) {
 
       // Get price range
       const prices = venue.courts.map((court) => court.pricePerHour);
-      const minPricePerHour = prices.length > 0 ? Math.min(...prices) : 0;
-      const maxPricePerHour = prices.length > 0 ? Math.max(...prices) : 0;
+      const minPricePerHour = prices.length > 0 ? Math.min(...prices) / 100 : 0; // Convert to Rupees
+      const maxPricePerHour = prices.length > 0 ? Math.max(...prices) / 100 : 0; // Convert to Rupees
 
       // Generate tags
       const tags = [];
       if (avgRating >= 4.5) tags.push("Top Rated");
-      if (minPricePerHour < 100000) tags.push("Budget Friendly");
+      if (minPricePerHour < 1000) tags.push("Budget Friendly"); // Less than ₹1000
       if (venue.amenities.includes("Parking")) tags.push("Parking");
       if (venue.amenities.includes("Lighting")) tags.push("Night Play");
 

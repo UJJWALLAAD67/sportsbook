@@ -37,7 +37,17 @@ const AMENITIES_OPTIONS = [
 ];
 
 // Use schema-inferred type everywhere
-type VenueFormData = z.infer<typeof venueSchema>;
+type VenueFormValues = z.infer<typeof venueSchema> & {
+  courts: Array<{
+    name: string;
+    sport: string;
+    pricePerHour: number;
+    currency: string; // Explicitly define as string
+    openTime: number;
+    closeTime: number;
+    id?: number;
+  }>;
+};
 
 export default function EditVenuePage() {
   const { data: session, status } = useSession();
@@ -48,7 +58,7 @@ export default function EditVenuePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
-  const [venue, setVenue] = useState<VenueFormData | null>(null);
+  const [venue, setVenue] = useState<VenueFormValues | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const {
@@ -57,7 +67,7 @@ export default function EditVenuePage() {
     handleSubmit,
     formState: { errors },
     reset,
-  } = useForm<VenueFormData>({
+  } = useForm<VenueFormValues>({
     resolver: zodResolver(venueSchema),
   });
 
@@ -72,7 +82,7 @@ export default function EditVenuePage() {
     if (!session || session.user.role !== "OWNER") {
       router.push("/auth/login");
       return;
-    }
+    };
 
     const fetchVenue = async () => {
       try {
@@ -82,11 +92,21 @@ export default function EditVenuePage() {
           throw new Error(errorData.error || "Failed to fetch venue");
         }
 
-        const venueData: VenueFormData = await response.json();
-        setVenue(venueData);
+        const venueData: VenueFormValues = await response.json();
+
+        // Ensure currency is always a string for each court, defaulting to 'INR' if undefined
+        const processedVenueData = {
+          ...venueData,
+          courts: venueData.courts.map(court => ({
+            ...court,
+            currency: court.currency || "INR",
+          })),
+        };
+
+        setVenue(processedVenueData);
 
         // Reset form with fetched venue data
-        reset(venueData);
+        reset(processedVenueData);
       } catch (error: unknown) {
         console.error("Error fetching venue:", error);
         setFetchError(
@@ -102,7 +122,7 @@ export default function EditVenuePage() {
     }
   }, [session, status, router, venueId, reset]);
 
-  const onSubmit = async (data: VenueFormData) => {
+  const onSubmit = async (data: VenueFormValues) => {
     setIsSubmitting(true);
     setSubmitError(null);
 

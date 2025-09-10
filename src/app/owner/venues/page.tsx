@@ -23,6 +23,7 @@ interface Venue {
   city: string;
   approved: boolean;
   rating: number | null;
+  image?: string; // Add image field
   courts: Array<{
     id: number;
     name: string;
@@ -169,8 +170,19 @@ export default function OwnerVenuesPage() {
                 className="bg-white rounded-xl shadow-sm overflow-hidden"
               >
                 {/* Venue Image Placeholder */}
-                <div className="h-48 bg-gradient-to-br from-primary-100 to-primary-200 flex items-center justify-center">
-                  <BuildingOfficeIcon className="w-16 h-16 text-primary-600" />
+                {/* Venue Image */}
+                <div className="h-48 relative">
+                  {venue.image ? (
+                    <img
+                      src={venue.image}
+                      alt={venue.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-primary-100 to-primary-200 flex items-center justify-center">
+                      <BuildingOfficeIcon className="w-16 h-16 text-primary-600" />
+                    </div>
+                  )}
                 </div>
 
                 <div className="p-6">

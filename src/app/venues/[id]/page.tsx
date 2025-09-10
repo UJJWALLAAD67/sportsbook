@@ -185,8 +185,18 @@ export default function VenueDetailPage() {
             {/* Venue Header */}
             <div className="bg-white rounded-xl shadow-sm p-6">
               {/* Photo Gallery */}
-              <div className="h-64 bg-gradient-to-br from-primary-100 to-primary-200 rounded-lg flex items-center justify-center mb-6">
-                <BuildingOfficeIcon className="w-24 h-24 text-primary-600" />
+              <div className="h-64 relative bg-gray-100 rounded-lg overflow-hidden mb-6">
+                {venue.photos && venue.photos.length > 0 ? (
+                  <img
+                    src={venue.photos[0]}
+                    alt={venue.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-primary-100 to-primary-200 flex items-center justify-center">
+                    <BuildingOfficeIcon className="w-24 h-24 text-primary-600" />
+                  </div>
+                )}
               </div>
 
               <div className="flex justify-between items-start mb-4">

@@ -74,72 +74,66 @@ export async function PUT(
 ) {
   try {
     const session = await getServerSession(authOptions);
-
     if (!session || session.user.role !== "OWNER") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { id } = await context.params;
     const venueId = parseInt(id, 10);
-
     if (isNaN(venueId)) {
       return NextResponse.json({ error: "Invalid venue ID" }, { status: 400 });
     }
 
-    // Check if request is FormData (with image) or JSON (without image)
-    const contentType = request.headers.get('content-type');
-    let venueData;
+    const contentType = request.headers.get("content-type");
+    let venueData: any;
     let cloudinaryResult = null;
 
-    if (contentType?.includes('multipart/form-data')) {
-      // Handle FormData with image
+    if (contentType?.includes("multipart/form-data")) {
       const formData = await request.formData();
-      
-      // Extract image file
-      const imageFile = formData.get('image') as File;
+      const imageFile = formData.get("image") as File;
       if (imageFile && imageFile.size > 0) {
-        // Validate image
-        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-        const maxSize = 10 * 1024 * 1024; // 10MB limit for Cloudinary
+        const allowedTypes = [
+          "image/jpeg",
+          "image/jpg",
+          "image/png",
+          "image/webp",
+        ];
+        const maxSize = 10 * 1024 * 1024;
 
         if (!allowedTypes.includes(imageFile.type)) {
           return NextResponse.json(
-            { error: `Invalid file type: ${imageFile.type}. Only JPEG, PNG, and WebP are allowed.` },
+            { error: `Invalid file type: ${imageFile.type}` },
             { status: 400 }
           );
         }
 
         if (imageFile.size > maxSize) {
           return NextResponse.json(
-            { error: `File too large. Maximum size is 10MB.` },
+            { error: `File too large. Maximum 10MB.` },
             { status: 400 }
           );
         }
 
         try {
-          // Upload to Cloudinary
           const bytes = await imageFile.arrayBuffer();
           const buffer = Buffer.from(bytes);
-          cloudinaryResult = await uploadImageToCloudinary(buffer, 'venues');
-        } catch (error) {
-          console.error('Cloudinary upload error:', error);
+          cloudinaryResult = await uploadImageToCloudinary(buffer, "venues");
+        } catch (err) {
+          console.error("Cloudinary upload error:", err);
           return NextResponse.json(
-            { error: 'Failed to upload image. Please try again.' },
+            { error: "Failed to upload image." },
             { status: 500 }
           );
         }
       }
 
-      // Parse venue data from FormData
-      const venueDataString = formData.get('venueData') as string;
+      const venueDataString = formData.get("venueData") as string;
       venueData = JSON.parse(venueDataString);
     } else {
-      // Handle regular JSON request (backward compatibility)
       venueData = await request.json();
     }
 
     const validation = venueSchema.safeParse(venueData);
-
     if (!validation.success) {
       return NextResponse.json(
         { error: "Invalid input", details: validation.error.format() },
@@ -147,22 +141,17 @@ export async function PUT(
       );
     }
 
-    const { courts: submittedCourts, ...venueData } = validation.data;
+    // Fix: rename destructured variable to avoid conflict
+    const { courts: submittedCourts, ...venueFields } = validation.data;
 
     const existingVenue = await prisma.venue.findFirst({
-      where: {
-        id: venueId,
-        owner: { userId: session.user.id },
-      },
-      select: { 
-        courts: { select: { id: true } },
-        imagePublicId: true // Get current image public_id for deletion if needed
-      },
+      where: { id: venueId, owner: { userId: session.user.id } },
+      select: { courts: { select: { id: true } }, imagePublicId: true },
     });
 
     if (!existingVenue) {
       return NextResponse.json(
-        { error: "Venue not found or you don't have permission to edit it" },
+        { error: "Venue not found or no permission" },
         { status: 404 }
       );
     }
@@ -176,42 +165,33 @@ export async function PUT(
     );
 
     await prisma.$transaction(async (tx) => {
-      // Prepare venue update data
       const updateData: any = {
-        name: venueData.name,
-        description: venueData.description,
-        address: venueData.address,
-        city: venueData.city,
-        state: venueData.state,
-        country: venueData.country,
-        amenities: venueData.amenities,
+        name: venueFields.name,
+        description: venueFields.description,
+        address: venueFields.address,
+        city: venueFields.city,
+        state: venueFields.state,
+        country: venueFields.country,
+        amenities: venueFields.amenities,
       };
 
-      // If new image is uploaded, update image fields and delete old image
       if (cloudinaryResult) {
         updateData.image = cloudinaryResult.secure_url;
         updateData.imagePublicId = cloudinaryResult.public_id;
-        
-        // Delete old image from Cloudinary if it exists
+
         if (existingVenue.imagePublicId) {
           try {
             await deleteImageFromCloudinary(existingVenue.imagePublicId);
-          } catch (error) {
-            console.error('Failed to delete old image from Cloudinary:', error);
-            // Continue with update even if old image deletion fails
+          } catch (err) {
+            console.error("Failed to delete old image:", err);
           }
         }
       }
 
-      await tx.venue.update({
-        where: { id: venueId },
-        data: updateData,
-      });
+      await tx.venue.update({ where: { id: venueId }, data: updateData });
 
       if (courtsToDelete.length > 0) {
-        await tx.court.deleteMany({
-          where: { id: { in: courtsToDelete } },
-        });
+        await tx.court.deleteMany({ where: { id: { in: courtsToDelete } } });
       }
 
       for (const court of submittedCourts) {
@@ -230,23 +210,20 @@ export async function PUT(
             data: courtPayload,
           });
         } else {
-          await tx.court.create({
-            data: { ...courtPayload, venueId },
-          });
+          await tx.court.create({ data: { ...courtPayload, venueId } });
         }
       }
     });
 
     return NextResponse.json({ message: "Venue updated successfully" });
-  } catch (error) {
-    console.error("Error updating venue:", error);
+  } catch (err) {
+    console.error("Error updating venue:", err);
     return NextResponse.json(
       { error: "Failed to update venue" },
       { status: 500 }
     );
   }
 }
-
 /**
  * DELETE handler to remove a venue.
  * Checks ownership and prevents deletion if there are active bookings.

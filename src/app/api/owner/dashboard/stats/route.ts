@@ -12,13 +12,6 @@ export async function GET() {
   }
 
   try {
-    // Debug: Log the session user info
-    console.log("Dashboard stats - Session user:", {
-      id: session.user.id,
-      email: session.user.email,
-      role: session.user.role
-    });
-
     const owner = await prisma.facilityOwner.findUnique({
       where: { userId: session.user.id },
       include: {
@@ -32,8 +25,6 @@ export async function GET() {
         }
       }
     });
-
-    console.log("Found owner:", owner);
 
     if (!owner) {
       // Check if user is OWNER role but doesn't have a facility owner profile
@@ -54,7 +45,6 @@ export async function GET() {
             }
           }
         });
-        console.log("Created new owner profile:", newOwner);
         
         // Return empty stats for new owner
         return NextResponse.json({
@@ -91,7 +81,6 @@ export async function GET() {
     const endOfLastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
 
     // Get venue statistics first
-    console.log("Querying venues for owner ID:", owner.id);
     
     const venueStats = await prisma.venue.groupBy({
       by: ['approved'],
@@ -99,7 +88,7 @@ export async function GET() {
       _count: { id: true }
     });
     
-    console.log("Venue stats result:", venueStats);
+    
 
     // Get booking counts
     const totalBookings = await prisma.booking.count({

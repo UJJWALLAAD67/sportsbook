@@ -1,5 +1,5 @@
 // src/lib/cloudinary.ts
-import { v2 as cloudinary } from 'cloudinary';
+import { v2 as cloudinary } from "cloudinary";
 
 // Configure Cloudinary
 cloudinary.config({
@@ -18,45 +18,47 @@ export { cloudinary };
  */
 export async function uploadImageToCloudinary(
   fileBuffer: Buffer,
-  folder: string = 'venues'
-): Promise<{ 
-  public_id: string; 
-  secure_url: string; 
-  width: number; 
+  folder: string = "venues"
+): Promise<{
+  public_id: string;
+  secure_url: string;
+  width: number;
   height: number;
   format: string;
   bytes: number;
 }> {
   return new Promise((resolve, reject) => {
-    cloudinary.uploader.upload_stream(
-      {
-        folder,
-        resource_type: 'image',
-        transformation: [
-          { quality: 'auto:good' }, // Automatic quality optimization
-          { fetch_format: 'auto' }, // Automatic format selection (WebP when supported)
-          { width: 1200, height: 800, crop: 'limit' }, // Limit max size for performance
-        ],
-        allowed_formats: ['jpg', 'png', 'webp', 'jpeg'],
-      },
-      (error, result) => {
-        if (error) {
-          console.error('Cloudinary upload error:', error);
-          reject(error);
-        } else if (result) {
-          resolve({
-            public_id: result.public_id,
-            secure_url: result.secure_url,
-            width: result.width,
-            height: result.height,
-            format: result.format,
-            bytes: result.bytes,
-          });
-        } else {
-          reject(new Error('Upload failed - no result'));
+    cloudinary.uploader
+      .upload_stream(
+        {
+          folder,
+          resource_type: "image",
+          transformation: [
+            { quality: "auto:good" }, // Automatic quality optimization
+            { fetch_format: "auto" }, // Automatic format selection (WebP when supported)
+            { width: 1200, height: 800, crop: "limit" }, // Limit max size for performance
+          ],
+          allowed_formats: ["jpg", "png", "webp", "jpeg"],
+        },
+        (error, result) => {
+          if (error) {
+            console.error("Cloudinary upload error:", error);
+            reject(error);
+          } else if (result) {
+            resolve({
+              public_id: result.public_id,
+              secure_url: result.secure_url,
+              width: result.width,
+              height: result.height,
+              format: result.format,
+              bytes: result.bytes,
+            });
+          } else {
+            reject(new Error("Upload failed - no result"));
+          }
         }
-      }
-    ).end(fileBuffer);
+      )
+      .end(fileBuffer);
   });
 }
 
@@ -65,13 +67,15 @@ export async function uploadImageToCloudinary(
  * @param publicId - The public_id of the image to delete
  * @returns Promise with deletion result
  */
-export async function deleteImageFromCloudinary(publicId: string): Promise<any> {
+export async function deleteImageFromCloudinary(
+  publicId: string
+): Promise<any> {
   try {
     const result = await cloudinary.uploader.destroy(publicId);
-    console.log('Image deleted from Cloudinary:', result);
+    console.log("Image deleted from Cloudinary:", result);
     return result;
   } catch (error) {
-    console.error('Error deleting image from Cloudinary:', error);
+    console.error("Error deleting image from Cloudinary:", error);
     throw error;
   }
 }
@@ -82,7 +86,7 @@ export async function deleteImageFromCloudinary(publicId: string): Promise<any> 
  * @param options - Transformation options
  * @returns Optimized image URL
  */
-export function getOptimizedImageUrl(
+export function getOptimized(
   publicId: string,
   options: {
     width?: number;
@@ -91,19 +95,14 @@ export function getOptimizedImageUrl(
     quality?: string;
   } = {}
 ): string {
-  const {
-    width,
-    height,
-    crop = 'fill',
-    quality = 'auto:good',
-  } = options;
+  const { width, height, crop = "fill", quality = "auto:good" } = options;
 
   return cloudinary.url(publicId, {
     width,
     height,
     crop,
     quality,
-    fetch_format: 'auto',
+    fetch_format: "auto",
     secure: true,
   });
 }
@@ -113,12 +112,12 @@ export function getOptimizedImageUrl(
  * @param publicId - The public_id of the image
  * @returns Object with different sized URLs
  */
-export function getResponsiveImageUrls(publicId: string) {
+export function getResponsives(publicId: string) {
   return {
-    thumbnail: getOptimizedImageUrl(publicId, { width: 150, height: 150 }),
-    small: getOptimizedImageUrl(publicId, { width: 400, height: 300 }),
-    medium: getOptimizedImageUrl(publicId, { width: 800, height: 600 }),
-    large: getOptimizedImageUrl(publicId, { width: 1200, height: 800 }),
+    thumbnail: getOptimized(publicId, { width: 150, height: 150 }),
+    small: getOptimized(publicId, { width: 400, height: 300 }),
+    medium: getOptimized(publicId, { width: 800, height: 600 }),
+    large: getOptimized(publicId, { width: 1200, height: 800 }),
     original: cloudinary.url(publicId, { secure: true }),
   };
 }

@@ -5,58 +5,12 @@ import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/prisma";
 import { authOptions } from "@/lib/auth";
 import slugify from "slugify";
-import { z } from "zod";
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
-import { venueSchema } from "@/lib/schemas/venue"; 
-import { uploadImageToCloudinary } from "@/lib/cloudinary";
-// A server-side Zod schema for validation
-
-
-// GET /api/owner/venues
-export async function GET() {
-  const session = await getServerSession(authOptions);
-
-  if (!session || session.user.role !== "OWNER") {
-    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-  }
-
-  try {
-    const owner = await prisma.facilityOwner.findUnique({
-      where: { userId: session.user.id },
-      include: {
-        venues: {
-          include: {
-            courts: true,
-          },
-        },
-      },
-    });
-
-    if (!owner) {
-      return NextResponse.json(
-        { message: "Owner profile not found" },
-        { status: 404 }
-      );
-    }
-
-    // Convert price from Paisa to Rupees for each court before sending
-    const venuesForFrontend = owner.venues.map(venue => ({
-      ...venue,
-      courts: venue.courts.map(court => ({
-        ...court,
-        pricePerHour: court.pricePerHour / 100,
-      })),
-    }));
-
-    return NextResponse.json(venuesForFrontend);
-  } catch (error) {
-    console.error("Error fetching owner venues:", error);
-    return NextResponse.json(
-      { message: "Internal Server Error" },
-      { status: 500 }
-    );
-  }
-}
+import { venueSchema } from "@/lib/schemas/venue";
+import {
+  uploadImageToCloudinary,
+  deleteImageFromCloudinary,
+} from "@/lib/cloudinary";
 
 // POST /api/owner/venues
 export async function POST(request: Request) {
@@ -66,69 +20,92 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
 
-  try {
-    // Check if request is FormData (with image) or JSON (without image)
-    const contentType = request.headers.get('content-type');
-    let venueData;
-    let cloudinaryResult = null;
+  let cloudinaryResult: { public_id: string; secure_url: string } | null = null;
 
-    if (contentType?.includes('multipart/form-data')) {
-      // Handle FormData with image
+  try {
+    const contentType = request.headers.get("content-type");
+    let venueData: any;
+
+    if (contentType?.includes("multipart/form-data")) {
+      // Handle multipart form with image
       const formData = await request.formData();
-      
-      // Extract image file
-      const imageFile = formData.get('image') as File;
+
+      // Parse JSON venue data *before* uploading image
+      const venueDataString = formData.get("venueData") as string;
+      if (!venueDataString) {
+        return NextResponse.json(
+          { message: "Missing venueData" },
+          { status: 400 }
+        );
+      }
+
+      venueData = JSON.parse(venueDataString);
+
+      // Validate venue data
+      const validated = venueSchema.safeParse(venueData);
+      if (!validated.success) {
+        return NextResponse.json(
+          {
+            message: "Invalid data",
+            errors: validated.error.flatten().fieldErrors,
+          },
+          { status: 400 }
+        );
+      }
+      venueData = validated.data;
+
+      // Upload image if provided
+      const imageFile = formData.get("image") as File | null;
       if (imageFile && imageFile.size > 0) {
-        // Validate image
-        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-        const maxSize = 10 * 1024 * 1024; // 10MB limit for Cloudinary
+        const allowedTypes = [
+          "image/jpeg",
+          "image/jpg",
+          "image/png",
+          "image/webp",
+        ];
+        const maxSize = 10 * 1024 * 1024; // 10MB
 
         if (!allowedTypes.includes(imageFile.type)) {
           return NextResponse.json(
-            { message: `Invalid file type: ${imageFile.type}. Only JPEG, PNG, and WebP are allowed.` },
+            {
+              message: `Invalid file type: ${imageFile.type}. Only JPEG, PNG, and WebP are allowed.`,
+            },
             { status: 400 }
           );
         }
-
         if (imageFile.size > maxSize) {
           return NextResponse.json(
-            { message: `File too large. Maximum size is 10MB.` },
+            { message: "File too large (max 10MB)" },
             { status: 400 }
           );
         }
 
         try {
-          // Upload to Cloudinary
           const bytes = await imageFile.arrayBuffer();
           const buffer = Buffer.from(bytes);
-          cloudinaryResult = await uploadImageToCloudinary(buffer, 'venues');
-        } catch (error) {
-          console.error('Cloudinary upload error:', error);
+          cloudinaryResult = await uploadImageToCloudinary(buffer, "venues");
+        } catch (err) {
+          console.error("Cloudinary upload failed:", err);
           return NextResponse.json(
-            { message: 'Failed to upload image. Please try again.' },
+            { message: "Failed to upload image" },
             { status: 500 }
           );
         }
       }
-
-      // Parse venue data from FormData
-      const venueDataString = formData.get('venueData') as string;
-      venueData = JSON.parse(venueDataString);
     } else {
-      // Handle regular JSON request (backward compatibility)
-      venueData = await request.json();
-    }
-
-    const validatedData = venueSchema.safeParse(venueData);
-
-    if (!validatedData.success) {
-      return NextResponse.json(
-        {
-          message: "Invalid data",
-          errors: validatedData.error.flatten().fieldErrors,
-        },
-        { status: 400 }
-      );
+      // Handle plain JSON requests
+      const body = await request.json();
+      const validated = venueSchema.safeParse(body);
+      if (!validated.success) {
+        return NextResponse.json(
+          {
+            message: "Invalid data",
+            errors: validated.error.flatten().fieldErrors,
+          },
+          { status: 400 }
+        );
+      }
+      venueData = validated.data;
     }
 
     const {
@@ -140,12 +117,12 @@ export async function POST(request: Request) {
       country,
       amenities,
       courts,
-    } = validatedData.data;
+    } = venueData;
 
+    // Ensure owner profile exists
     const owner = await prisma.facilityOwner.findUnique({
       where: { userId: session.user.id },
     });
-
     if (!owner) {
       return NextResponse.json(
         { message: "Owner profile not found" },
@@ -156,15 +133,14 @@ export async function POST(request: Request) {
     const slug = slugify(name, { lower: true, strict: true });
 
     const newVenue = await prisma.$transaction(async (tx) => {
-      // Check for existing slug before creating
       const existingVenue = await tx.venue.findUnique({ where: { slug } });
       if (existingVenue) {
         throw new Error(
-          "Venue with this name already exists. Please use a different name."
+          "Venue with this name already exists. Please choose a different name."
         );
       }
 
-      const venue = await tx.venue.create({
+      return tx.venue.create({
         data: {
           ownerId: owner.id,
           name,
@@ -175,26 +151,32 @@ export async function POST(request: Request) {
           state,
           country,
           amenities,
-          image: cloudinaryResult?.secure_url || null, // Store Cloudinary URL
-          imagePublicId: cloudinaryResult?.public_id || null, // Store for deletion later
+          image: cloudinaryResult?.secure_url || null,
+          imagePublicId: cloudinaryResult?.public_id || null,
           approved: false,
           courts: {
-            create: courts.map((court) => ({
+            create: courts.map((court: any) => ({
               ...court,
-              pricePerHour: Math.round(court.pricePerHour * 100),
+              pricePerHour: Math.round(court.pricePerHour * 100), // Rupees → Paisa
             })),
           },
         },
       });
-      return venue;
-    }, {
-      timeout: 30000, // 30 seconds timeout for image processing
     });
 
     return NextResponse.json(newVenue, { status: 201 });
   } catch (error) {
     console.error("Error creating venue:", error);
-    // Handle specific Prisma unique constraint error
+
+    // Rollback Cloudinary upload if DB insert fails
+    if (cloudinaryResult?.public_id) {
+      try {
+        await deleteImageFromCloudinary(cloudinaryResult.public_id);
+      } catch (cleanupError) {
+        console.error("Failed to cleanup Cloudinary image:", cleanupError);
+      }
+    }
+
     if (
       error instanceof PrismaClientKnownRequestError &&
       error.code === "P2002"
@@ -204,13 +186,58 @@ export async function POST(request: Request) {
         { status: 409 }
       );
     }
-    // Handle custom error message from transaction
+
     if (error instanceof Error) {
       return NextResponse.json({ message: error.message }, { status: 400 });
     }
 
     return NextResponse.json(
       { message: "Internal Server Error" },
+      { status: 500 }
+    );
+  }
+}
+// GET /api/owner/venues
+export async function GET() {
+  try {
+    const session = await getServerSession(authOptions);
+
+    if (!session || session.user.role !== "OWNER") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const owner = await prisma.facilityOwner.findUnique({
+      where: { userId: session.user.id },
+    });
+
+    if (!owner) {
+      return NextResponse.json(
+        { error: "Owner profile not found" },
+        { status: 404 }
+      );
+    }
+
+    const venues = await prisma.venue.findMany({
+      where: { ownerId: owner.id },
+      include: { courts: true },
+    });
+
+    // Convert price from Paisa → Rupees for frontend
+    const venuesForFrontend = venues.map((venue) => ({
+      ...venue,
+      courts: venue.courts.map((court) => ({
+        ...court,
+        pricePerHour: court.pricePerHour / 100,
+      })),
+    }));
+
+    console.log("Venues for frontend (owner API):", venuesForFrontend); // Add this line
+
+    return NextResponse.json(venuesForFrontend);
+  } catch (error) {
+    console.error("Error fetching venues:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch venues" },
       { status: 500 }
     );
   }

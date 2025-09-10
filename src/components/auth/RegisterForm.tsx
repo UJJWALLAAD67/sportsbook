@@ -29,7 +29,7 @@ type RegisterFormData = z.infer<typeof registerSchema>;
 type OtpFormData = z.infer<typeof otpSchema>;
 
 export default function RegisterForm() {
-  const [step, setStep] = useState<"register" | "otp">("register");
+  const [step,setStep] = useState<"register" | "otp">("register");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [userEmail, setUserEmail] = useState("");
@@ -245,7 +245,7 @@ export default function RegisterForm() {
                   {...registerField("role")}
                   className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-green-500 focus:border-green-500"
                 >
-                  <option value="USER">User (Book facilities)</option>
+                  <option value="USER">User</option>
                   <option value="OWNER">Facility Owner</option>
                 </select>
                 {errors.role && (

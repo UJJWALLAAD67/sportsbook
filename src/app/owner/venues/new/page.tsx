@@ -7,7 +7,7 @@ import { useForm, useFieldArray, SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { TrashIcon, PlusIcon, PhotoIcon } from "@heroicons/react/24/outline";
-import { venueSchema, VenueFormData } from "@/lib/schemas/venue";
+import { venueSchema } from "@/lib/schemas/venue";
 
 const SPORTS_OPTIONS = [
   "Badminton",
@@ -32,6 +32,8 @@ const AMENITIES_OPTIONS = [
   "Seating Area",
 ];
 
+type VenueFormValues = z.infer<typeof venueSchema>;
+
 export default function NewVenuePage() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -45,7 +47,7 @@ export default function NewVenuePage() {
     control,
     handleSubmit,
     formState: { errors },
-  } = useForm<z.infer<typeof venueSchema>>({
+  } = useForm<VenueFormValues>({
     resolver: zodResolver(venueSchema),
     defaultValues: {
       country: "India",
@@ -101,7 +103,7 @@ export default function NewVenuePage() {
   };
 
   // Use SubmitHandler to explicitly type the function
-  const onSubmit: SubmitHandler<VenueFormData> = async (data) => {
+  const onSubmit: SubmitHandler<VenueFormValues> = async (data) => {
     setIsLoading(true);
     setApiError(null);
     

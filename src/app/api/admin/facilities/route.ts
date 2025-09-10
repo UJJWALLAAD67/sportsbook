@@ -3,11 +3,10 @@ import { getToken } from "next-auth/jwt";
 import { prisma } from "@/lib/prisma";
 import { Role } from "@/generated/prisma";
 
+// GET: fetch pending venues for admin
 export async function GET(req: NextRequest) {
   try {
     const token = await getToken({ req });
-    
-    // Check if user is admin
     if (!token || token.role !== Role.ADMIN) {
       return NextResponse.json(
         { error: "Unauthorized. Admin access required." },
@@ -15,72 +14,53 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Get pending venues with owner information and courts
     const pendingVenues = await prisma.venue.findMany({
       where: { approved: false },
       include: {
         owner: {
           include: {
             user: {
-              select: {
-                id: true,
-                fullName: true,
-                email: true
-              }
-            }
-          }
+              select: { id: true, fullName: true, email: true },
+            },
+          },
         },
-        courts: {
-          select: {
-            id: true,
-            name: true,
-            sport: true,
-            pricePerHour: true,
-            currency: true,
-            openTime: true,
-            closeTime: true
-          }
-        }
+        courts: true,
       },
-      orderBy: {
-        createdAt: 'desc'
-      }
+      orderBy: { createdAt: "desc" },
     });
 
-    // Transform the data to match the expected format
-    const transformedVenues = pendingVenues.map(venue => ({
-      id: venue.id,
-      name: venue.name,
-      description: venue.description,
-      address: venue.address,
-      city: venue.city,
-      state: venue.state,
-      country: venue.country,
-      amenities: venue.amenities,
-      imageUrl: venue.imageUrl,
-      approved: venue.approved,
+    const transformed = pendingVenues.map((v) => ({
+      id: v.id,
+      name: v.name,
+      description: v.description,
+      address: v.address,
+      city: v.city,
+      state: v.state,
+      country: v.country,
+      amenities: v.amenities,
+      photos: v.image ? [v.image] : [],
+      approved: v.approved,
       owner: {
-        id: venue.owner.user.id,
-        fullName: venue.owner.user.fullName,
-        email: venue.owner.user.email,
-        businessName: venue.owner.businessName || undefined
+        id: v.owner.user.id,
+        fullName: v.owner.user.fullName,
+        email: v.owner.user.email,
+        businessName: v.owner.businessName || undefined,
       },
-      courts: venue.courts.map(court => ({
-        id: court.id,
-        name: court.name,
-        sport: court.sport,
-        pricePerHour: Math.round(court.pricePerHour / 100), // Convert from paisa to rupees
-        currency: court.currency,
-        openTime: court.openTime,
-        closeTime: court.closeTime
+      courts: v.courts.map((c) => ({
+        id: c.id,
+        name: c.name,
+        sport: c.sport,
+        pricePerHour: Math.round(c.pricePerHour / 100),
+        currency: c.currency,
+        openTime: c.openTime,
+        closeTime: c.closeTime,
       })),
-      createdAt: venue.createdAt.toISOString()
+      createdAt: v.createdAt.toISOString(),
     }));
 
-    return NextResponse.json(transformedVenues);
-
+    return NextResponse.json(transformed);
   } catch (error) {
-    console.error("Error fetching admin facilities:", error);
+    console.error("GET admin facilities error:", error);
     return NextResponse.json(
       { error: "Failed to fetch pending facilities" },
       { status: 500 }
@@ -88,11 +68,10 @@ export async function GET(req: NextRequest) {
   }
 }
 
+// PATCH: approve a venue
 export async function PATCH(req: NextRequest) {
   try {
     const token = await getToken({ req });
-    
-    // Check if user is admin
     if (!token || token.role !== Role.ADMIN) {
       return NextResponse.json(
         { error: "Unauthorized. Admin access required." },
@@ -100,86 +79,76 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
-    const { venueId, action, comments } = await req.json();
-
-    if (!venueId || !action || !['approve', 'reject'].includes(action)) {
+    const { venueId } = await req.json();
+    if (!venueId)
       return NextResponse.json(
-        { error: "Invalid request. venueId and action (approve/reject) are required." },
+        { error: "venueId is required" },
         { status: 400 }
       );
-    }
 
-    // Get the venue with owner information
     const venue = await prisma.venue.findUnique({
       where: { id: venueId },
-      include: {
-        owner: {
-          include: {
-            user: true
-          }
-        }
-      }
     });
-
-    if (!venue) {
+    if (!venue)
+      return NextResponse.json({ error: "Venue not found" }, { status: 404 });
+    if (venue.approved)
       return NextResponse.json(
-        { error: "Venue not found" },
-        { status: 404 }
-      );
-    }
-
-    if (venue.approved) {
-      return NextResponse.json(
-        { error: "Venue is already approved" },
+        { error: "Venue already approved" },
         { status: 400 }
       );
-    }
 
-    if (action === 'approve') {
-      // Approve the venue
-      await prisma.venue.update({
-        where: { id: venueId },
-        data: { approved: true }
-      });
+    await prisma.venue.update({
+      where: { id: venueId },
+      data: { approved: true },
+    });
 
-      // Here you could send a notification email to the owner
-      // await sendMail(
-      //   venue.owner.user.email,
-      //   "Venue Approved - SportsBook",
-      //   `Your venue "${venue.name}" has been approved and is now live on SportsBook!`
-      // );
-
-      return NextResponse.json({
-        success: true,
-        message: "Venue approved successfully",
-        action: 'approve'
-      });
-
-    } else if (action === 'reject') {
-      // For rejection, you might want to keep the venue but mark it differently
-      // or delete it entirely. For now, let's just delete it.
-      await prisma.venue.delete({
-        where: { id: venueId }
-      });
-
-      // Here you could send a rejection email to the owner with comments
-      // await sendMail(
-      //   venue.owner.user.email,
-      //   "Venue Application Update - SportsBook",
-      //   `Your venue application for "${venue.name}" has been reviewed. ${comments ? `Feedback: ${comments}` : ''}`
-      // );
-
-      return NextResponse.json({
-        success: true,
-        message: "Venue rejected and removed",
-        action: 'reject'
-      });
-    }
-
+    return NextResponse.json({
+      success: true,
+      message: "Venue approved successfully",
+    });
   } catch (error) {
-    console.error("Error processing facility approval:", error);
+    console.error("PATCH admin facility error:", error);
     return NextResponse.json(
-      { error: "Failed to process facility approval" },
+      { error: "Failed to approve venue" },
+      { status: 500 }
+    );
+  }
+}
+
+
+// DELETE: reject a venue
+export async function DELETE(req: NextRequest) {
+  try {
+    const token = await getToken({ req });
+    if (!token || token.role !== Role.ADMIN) {
+      return NextResponse.json(
+        { error: "Unauthorized. Admin access required." },
+        { status: 403 }
+      );
+    }
+
+    const { searchParams } = new URL(req.url);
+    const venueId = Number(searchParams.get("venueId"));
+    if (!venueId)
+      return NextResponse.json(
+        { error: "venueId is required" },
+        { status: 400 }
+      );
+
+    const venue = await prisma.venue.findUnique({ where: { id: venueId } });
+    if (!venue)
+      return NextResponse.json({ error: "Venue not found" }, { status: 404 });
+
+    await prisma.venue.delete({ where: { id: venueId } });
+
+    return NextResponse.json({
+      success: true,
+      message: "Venue rejected and removed",
+    });
+  } catch (error) {
+    console.error("DELETE admin facility error:", error);
+    return NextResponse.json(
+      { error: "Failed to reject venue" },
       { status: 500 }
     );
   }

@@ -72,8 +72,8 @@ export async function GET(
 
     // Get price range
     const prices = venue.courts.map((court) => court.pricePerHour);
-    const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
-    const maxPrice = prices.length > 0 ? Math.max(...prices) : 0;
+    const minPrice = prices.length > 0 ? Math.min(...prices) / 100 : 0; // Convert to Rupees
+    const maxPrice = prices.length > 0 ? Math.max(...prices) / 100 : 0; // Convert to Rupees
 
     // Get operating hours
     const openTimes = venue.courts.map((court) => court.openTime);
@@ -104,12 +104,12 @@ export async function GET(
         close: latestClose,
       },
       amenities: venue.amenities,
-      imageUrl: venue.imageUrl,
+      photos: venue.image ? [venue.image] : [], // Map single image to photos array
       courts: venue.courts.map((court) => ({
         id: court.id,
         name: court.name,
         sport: court.sport,
-        pricePerHour: court.pricePerHour,
+        pricePerHour: court.pricePerHour / 100, // Convert to Rupees
         currency: court.currency,
         openTime: court.openTime,
         closeTime: court.closeTime,

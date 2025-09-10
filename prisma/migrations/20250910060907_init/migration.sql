@@ -51,7 +51,8 @@ CREATE TABLE "public"."Venue" (
     "latitude" DOUBLE PRECISION,
     "longitude" DOUBLE PRECISION,
     "amenities" TEXT[] DEFAULT ARRAY[]::TEXT[],
-    "photos" TEXT[] DEFAULT ARRAY[]::TEXT[],
+    "image" TEXT,
+    "imagePublicId" TEXT,
     "approved" BOOLEAN NOT NULL DEFAULT false,
     "rating" DOUBLE PRECISION,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -129,6 +130,7 @@ CREATE TABLE "public"."EmailOtp" (
     "expiresAt" TIMESTAMP(3) NOT NULL,
     "attempts" INTEGER NOT NULL DEFAULT 0,
     "verified" BOOLEAN NOT NULL DEFAULT false,
+    "metadata" JSONB,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "EmailOtp_pkey" PRIMARY KEY ("id")
