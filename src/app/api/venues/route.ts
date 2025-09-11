@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
+    console.log("Search Params:", searchParams.toString());
 
     // Parse query parameters
     const search = searchParams.get("search") || "";
@@ -18,7 +20,7 @@ export async function GET(request: Request) {
     const sortOrder = searchParams.get("sortOrder") || "asc";
 
     // Build where clause
-    const where: any = {
+    const where: Prisma.VenueWhereInput = {
       approved: true,
       AND: [],
     };
@@ -30,7 +32,6 @@ export async function GET(request: Request) {
           { name: { contains: search, mode: "insensitive" } },
           { description: { contains: search, mode: "insensitive" } },
           { address: { contains: search, mode: "insensitive" } },
-          { city: { contains: city, mode: "insensitive" } },
         ],
       });
     }
@@ -38,7 +39,7 @@ export async function GET(request: Request) {
     // City filter
     if (city) {
       where.AND.push({
-        city: { contains: city, mode: "insensitive" },
+        city: { equals: city, mode: "insensitive" },
       });
     }
 
@@ -55,9 +56,9 @@ export async function GET(request: Request) {
 
     // Price filter
     if (minPrice || maxPrice) {
-      const priceFilter: any = {};
-      if (minPrice) priceFilter.gte = parseInt(minPrice) * 100; // Convert to paisa
-      if (maxPrice) priceFilter.lte = parseInt(maxPrice) * 100; // Convert to paisa
+      const priceFilter: Prisma.IntFilter = {};
+      if (minPrice) priceFilter.gte = parseInt(minPrice);
+      if (maxPrice) priceFilter.lte = parseInt(maxPrice);
 
       where.AND.push({
         courts: {
@@ -68,11 +69,21 @@ export async function GET(request: Request) {
       });
     }
 
+    // Rating filter
+    if (rating) {
+      where.AND.push({
+        rating: {
+          gte: parseFloat(rating),
+        },
+      });
+    }
+    console.log("Prisma Where Clause:", JSON.stringify(where, null, 2));
+
     // Calculate offset
     const skip = (page - 1) * limit;
 
     // Build order by clause
-    let orderBy: any = {};
+    let orderBy: Prisma.VenueOrderByWithRelationInput = {};
     switch (sortBy) {
       case "price":
         orderBy = {
@@ -84,8 +95,7 @@ export async function GET(request: Request) {
         };
         break;
       case "rating":
-        // We'll handle this after getting the data
-        orderBy = { name: "asc" };
+        orderBy = { rating: sortOrder as "asc" | "desc" };
         break;
       case "name":
       default:
@@ -124,6 +134,8 @@ export async function GET(request: Request) {
       }),
       prisma.venue.count({ where }),
     ]);
+    console.log("Venues from DB:", venues.length);
+
     // Transform venues with computed fields
     let transformedVenues = venues.map((venue) => {
       // Calculate average rating
@@ -138,8 +150,8 @@ export async function GET(request: Request) {
 
       // Get price range
       const prices = venue.courts.map((court) => court.pricePerHour);
-      const minPricePerHour = prices.length > 0 ? Math.min(...prices) / 100 : 0; // Convert to Rupees
-      const maxPricePerHour = prices.length > 0 ? Math.max(...prices) / 100 : 0; // Convert to Rupees
+      const minPricePerHour = prices.length > 0 ? Math.min(...prices) : 0;
+      const maxPricePerHour = prices.length > 0 ? Math.max(...prices) : 0;
 
       // Generate tags
       const tags = [];
@@ -163,26 +175,11 @@ export async function GET(request: Request) {
         maxPricePerHour,
         currency: venue.courts[0]?.currency || "INR",
         amenities: venue.amenities,
-        image: (venue as any).image || null,
+        image: venue.image || null,
         tags: tags.slice(0, 3),
         courts: venue.courts,
       };
     });
-
-    // Apply rating filter if specified
-    if (rating) {
-      const minRating = parseFloat(rating);
-      transformedVenues = transformedVenues.filter(
-        (venue) => venue.rating >= minRating
-      );
-    }
-
-    // Sort by rating if specified
-    if (sortBy === "rating") {
-      transformedVenues.sort((a, b) => {
-        return sortOrder === "desc" ? b.rating - a.rating : a.rating - b.rating;
-      });
-    }
 
     // Get available filters for the sidebar
     const [allCities, allSports] = await Promise.all([

@@ -2,10 +2,17 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/hash";
 import { sendMail } from "@/lib/mailer";
-import { Prisma, Role } from "@/generated/prisma";
+import { Role } from "@/generated/prisma";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
+
+interface PendingUserData {
+  email: string;
+  passwordHash: string;
+  fullName: string;
+  role: Role;
+}
 
 // It's best practice to use a shared Zod schema
 const signupSchema = z.object({
@@ -16,7 +23,7 @@ const signupSchema = z.object({
 });
 
 // Helper to create OTP for pending registration
-async function createPendingRegistrationOtp(email: string, userData: any) {
+async function createPendingRegistrationOtp(email: string, userData: PendingUserData) {
   const otp = crypto.randomInt(100000, 999999).toString();
   const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes validity
   const tokenHash = await bcrypt.hash(otp, 10);

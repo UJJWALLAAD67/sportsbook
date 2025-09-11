@@ -68,10 +68,9 @@ export default function OwnerDashboard() {
     // Fetch actual stats and venues from API
     const fetchData = async () => {
       try {
-        const [statsResponse, venuesResponse, sportsResponse] = await Promise.all([
+        const [statsResponse, venuesResponse] = await Promise.all([
           fetch("/api/owner/dashboard/stats"),
           fetch("/api/owner/venues"),
-          fetch("/api/sports/popular"),
         ]);
 
         if (statsResponse.ok) {
@@ -86,13 +85,6 @@ export default function OwnerDashboard() {
           setVenues(venuesData);
         } else {
           console.error("Failed to fetch venues");
-        }
-
-        if (sportsResponse.ok) {
-          const sportsData = await sportsResponse.json();
-          setPopularSports(sportsData);
-        } else {
-          console.error("Failed to fetch popular sports");
         }
       } catch (error) {
         console.error("Error fetching dashboard data:", error);

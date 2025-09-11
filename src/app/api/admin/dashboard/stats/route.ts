@@ -157,8 +157,7 @@ export async function GET(req: NextRequest) {
       Math.round(((thisMonthRevenue._sum.amount || 0) / (lastMonthRevenue._sum.amount || 0)) * 100) : 
       (thisMonthRevenue._sum.amount || 0) > 0 ? 100 : 0;
 
-    // Convert revenue from paisa to rupees
-    const totalRevenueInRupees = Math.round((totalRevenue._sum.amount || 0) / 100);
+    const totalRevenueValue = totalRevenue._sum.amount || 0;
 
     const stats = {
       totalUsers,
@@ -166,7 +165,7 @@ export async function GET(req: NextRequest) {
       totalVenues,
       totalBookings,
       pendingApprovals,
-      totalRevenue: totalRevenueInRupees,
+      totalRevenue: totalRevenueValue,
       activeUsers,
       reportedIssues: 0, // Mock for now - can implement reports table later
       todayBookings,
@@ -178,7 +177,7 @@ export async function GET(req: NextRequest) {
       venueApprovalRate: totalVenues > 0 ? 
         Math.round((approvedVenues / totalVenues) * 100) : 0,
       averageRevenuePerBooking: totalBookings > 0 ? 
-        Math.round(totalRevenueInRupees / totalBookings) : 0
+        Math.round(totalRevenueValue / totalBookings) : 0
     };
 
     return NextResponse.json(stats);

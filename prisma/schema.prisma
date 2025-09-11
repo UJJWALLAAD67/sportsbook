@@ -82,7 +82,7 @@ model Court {
   venueId      Int
   name         String
   sport        String // e.g., "Badminton", "Tennis", "Football"
-  pricePerHour Int // store in smallest currency unit (e.g., INR paisa OR cents)
+  pricePerHour Decimal @db.Decimal(10, 2) // INR
   currency     String    @default("INR")
   openTime     Int // hour in 24h, e.g., 6
   closeTime    Int // hour in 24h, e.g., 22

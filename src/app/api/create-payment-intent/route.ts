@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
     // Assuming pricePerHour is already in paisa/cents from court model
     const durationInMilliseconds = booking.endTime.getTime() - booking.startTime.getTime();
     const durationInHours = durationInMilliseconds / (1000 * 60 * 60);
-    const amount = booking.court.pricePerHour * durationInHours;
+    const amount = Math.round(booking.court.pricePerHour * durationInHours);
 
     // Create a PaymentIntent with the order amount and currency
     const paymentIntent = await stripe.paymentIntents.create({

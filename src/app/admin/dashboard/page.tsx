@@ -225,20 +225,7 @@ export default function AdminDashboard() {
               <BuildingOfficeIcon className="w-5 h-5 mr-2" />
               Review Facilities ({stats.pendingApprovals})
             </Link>
-            <Link
-              href="/admin/users"
-              className="inline-flex items-center px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              <UserGroupIcon className="w-5 h-5 mr-2" />
-              Manage Users
-            </Link>
-            <Link
-              href="/admin/reports"
-              className="inline-flex items-center px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              <ExclamationTriangleIcon className="w-5 h-5 mr-2" />
-              Handle Reports ({stats.reportedIssues})
-            </Link>
+            
           </div>
         </div>
 

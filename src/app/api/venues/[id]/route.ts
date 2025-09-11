@@ -1,3 +1,4 @@
+// API route to fetch individual venue details with courts, reviews, and statistics
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
@@ -72,8 +73,8 @@ export async function GET(
 
     // Get price range
     const prices = venue.courts.map((court) => court.pricePerHour);
-    const minPrice = prices.length > 0 ? Math.min(...prices) / 100 : 0; // Convert to Rupees
-    const maxPrice = prices.length > 0 ? Math.max(...prices) / 100 : 0; // Convert to Rupees
+    const minPrice = prices.length > 0 ? Math.min(...prices)  : 0; // Convert to Rupees
+    const maxPrice = prices.length > 0 ? Math.max(...prices)  : 0; // Convert to Rupees
 
     // Get operating hours
     const openTimes = venue.courts.map((court) => court.openTime);
@@ -109,7 +110,7 @@ export async function GET(
         id: court.id,
         name: court.name,
         sport: court.sport,
-        pricePerHour: court.pricePerHour / 100, // Convert to Rupees
+        pricePerHour: court.pricePerHour, // Convert to Rupees
         currency: court.currency,
         openTime: court.openTime,
         closeTime: court.closeTime,
@@ -133,7 +134,10 @@ export async function GET(
 
     return NextResponse.json(transformedVenue);
   } catch (error) {
-    console.error("Error fetching venue:", error);
+    // Log error in development only
+    if (process.env.NODE_ENV === 'development') {
+      console.error("Venue fetch error:", error);
+    }
     return NextResponse.json(
       { error: "Failed to fetch venue" },
       { status: 500 }

@@ -56,7 +56,7 @@ export default function NewVenuePage() {
         {
           name: "Court 1",
           sport: "Badminton",
-          pricePerHour: 1000,
+          pricePerHour: 10,
           currency: "INR",
           openTime: 6,
           closeTime: 22,
@@ -108,21 +108,13 @@ export default function NewVenuePage() {
     setApiError(null);
     
     try {
-      // Create a deep copy to avoid mutating the original form data
-      const venueData = JSON.parse(JSON.stringify(data));
-
-      // Convert price to paisa for each court
-      venueData.courts.forEach((court: any) => {
-        court.pricePerHour = Math.round(court.pricePerHour * 100);
-      });
-
       let res;
       
       if (selectedFile) {
         // Send as FormData if image is selected
         const formData = new FormData();
         formData.append('image', selectedFile);
-        formData.append('venueData', JSON.stringify(venueData));
+        formData.append('venueData', JSON.stringify(data));
         
         res = await fetch("/api/owner/venues", {
           method: "POST",
@@ -133,7 +125,7 @@ export default function NewVenuePage() {
         res = await fetch("/api/owner/venues", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(venueData),
+          body: JSON.stringify(data),
         });
       }
 
@@ -390,7 +382,7 @@ export default function NewVenuePage() {
                           valueAsNumber: true,
                         })}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                        placeholder="1000"
+                        placeholder="10"
                       />
                       {errors.courts?.[index]?.pricePerHour && (
                         <p className="mt-1 text-sm text-red-600">

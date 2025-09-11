@@ -470,11 +470,22 @@ export default function FacilityApprovalsPage() {
   ) => {
     setIsProcessing(venueId);
     try {
-      const res = await fetch("/api/admin/facilities", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ venueId, action, comments: comment }),
-      });
+      let res: Response;
+      if (action === "approve") {
+        res = await fetch("/api/admin/facilities", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ venueId, comments: comment }),
+        });
+      } else {
+        // For rejection, use DELETE method and pass venueId as query param
+        res = await fetch(`/api/admin/facilities?venueId=${venueId}`, {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ comments: comment }), // Send comments in body for DELETE
+        });
+      }
+
       if (!res.ok) throw new Error("Failed to update venue");
 
       setVenues((prev) => prev.filter((v) => v.id !== venueId));

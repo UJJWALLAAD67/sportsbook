@@ -7,10 +7,14 @@ import { authOptions } from "@/lib/auth";
 import slugify from "slugify";
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 import { venueSchema } from "@/lib/schemas/venue";
+import { z } from "zod";
 import {
   uploadImageToCloudinary,
   deleteImageFromCloudinary,
 } from "@/lib/cloudinary";
+
+type VenueFormData = z.infer<typeof venueSchema>;
+type CourtInput = VenueFormData['courts'][number];
 
 // POST /api/owner/venues
 export async function POST(request: Request) {
@@ -24,7 +28,7 @@ export async function POST(request: Request) {
 
   try {
     const contentType = request.headers.get("content-type");
-    let venueData: any;
+    let venueData: VenueFormData;
 
     if (contentType?.includes("multipart/form-data")) {
       // Handle multipart form with image
@@ -155,9 +159,9 @@ export async function POST(request: Request) {
           imagePublicId: cloudinaryResult?.public_id || null,
           approved: false,
           courts: {
-            create: courts.map((court: any) => ({
+            create: courts.map((court: CourtInput) => ({
               ...court,
-              pricePerHour: Math.round(court.pricePerHour * 100), // Rupees → Paisa
+              pricePerHour: court.pricePerHour,
             })),
           },
         },
@@ -197,8 +201,9 @@ export async function POST(request: Request) {
     );
   }
 }
+
 // GET /api/owner/venues
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const session = await getServerSession(authOptions);
 
@@ -222,18 +227,7 @@ export async function GET() {
       include: { courts: true },
     });
 
-    // Convert price from Paisa → Rupees for frontend
-    const venuesForFrontend = venues.map((venue) => ({
-      ...venue,
-      courts: venue.courts.map((court) => ({
-        ...court,
-        pricePerHour: court.pricePerHour / 100,
-      })),
-    }));
-
-    console.log("Venues for frontend (owner API):", venuesForFrontend); // Add this line
-
-    return NextResponse.json(venuesForFrontend);
+    return NextResponse.json(venues);
   } catch (error) {
     console.error("Error fetching venues:", error);
     return NextResponse.json(

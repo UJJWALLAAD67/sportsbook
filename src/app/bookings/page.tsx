@@ -86,7 +86,6 @@ export default function BookingsPage() {
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [selectedStatus, setSelectedStatus] = useState<string>("ALL");
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
 
   // Check for success message from URL params
@@ -106,16 +105,13 @@ export default function BookingsPage() {
     if (status === "authenticated") {
       fetchBookings();
     }
-  }, [status, currentPage, selectedStatus]);
+  }, [status, currentPage]);
 
   const fetchBookings = async () => {
     try {
       setIsLoading(true);
       const params = new URLSearchParams();
       params.append("page", currentPage.toString());
-      if (selectedStatus !== "ALL") {
-        params.append("status", selectedStatus);
-      }
 
       const response = await fetch(`/api/bookings/user?${params.toString()}`);
       
@@ -225,37 +221,6 @@ export default function BookingsPage() {
           </div>
         )}
 
-        {/* Filters */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <label className="text-sm font-medium text-gray-700">
-                Filter by Status:
-              </label>
-              <select
-                value={selectedStatus}
-                onChange={(e) => {
-                  setSelectedStatus(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-              >
-                <option value="ALL">All Bookings</option>
-                <option value="PENDING">Pending</option>
-                <option value="CONFIRMED">Confirmed</option>
-                <option value="COMPLETED">Completed</option>
-                <option value="CANCELLED">Cancelled</option>
-              </select>
-            </div>
-            
-            <Link
-              href="/venues"
-              className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors"
-            >
-              Book New Court
-            </Link>
-          </div>
-        </div>
 
         {/* Error Message */}
         {error && (
@@ -340,14 +305,6 @@ export default function BookingsPage() {
 
                     {/* Actions */}
                     <div className="flex items-center space-x-3 mt-4 lg:mt-0 lg:ml-6">
-                      <Link
-                        href={`/bookings/${booking.id}`}
-                        className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-                      >
-                        <EyeIcon className="w-4 h-4 mr-1" />
-                        View
-                      </Link>
-                      
                       {canCancelBooking(booking) && (
                         <button
                           onClick={() => handleCancelBooking(booking.id)}

@@ -1,3 +1,4 @@
+// API route to create and manage bookings with concurrency control
 import { NextResponse, NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { prisma } from "@/lib/prisma";
@@ -14,21 +15,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { venueId, courtId, date, timeSlot, duration, totalPrice, userNotes } = await req.json();
+    const { courtId, date, startTime, duration, notes } = await req.json();
     const idempotencyKey = req.headers.get("Idempotency-Key");
 
-    if (!venueId || !courtId || !date || !timeSlot || !duration || !totalPrice) {
+    if (!courtId || !date || startTime === undefined || !duration) {
       return NextResponse.json(
         { error: "Missing required booking information" },
         { status: 400 }
       );
     }
 
-    // Extract hour from timeSlot (format: "YYYY-MM-DD-HH")
-    const hour = parseInt(timeSlot.split('-').pop() || '0');
-    const startTime = new Date(`${date}T${hour.toString().padStart(2, '0')}:00:00`);
-    const endTime = new Date(startTime);
-    endTime.setHours(startTime.getHours() + duration);
+    // Create start and end time objects
+    const bookingStartTime = new Date(`${date}T${startTime.toString().padStart(2, '0')}:00:00`);
+    const bookingEndTime = new Date(bookingStartTime);
+    bookingEndTime.setHours(bookingStartTime.getHours() + duration);
 
     // Check for duplicate booking with idempotency key
     if (idempotencyKey) {
@@ -53,8 +53,8 @@ export async function POST(req: NextRequest) {
         include: { venue: true }
       });
 
-      if (!court || court.venue.id !== venueId) {
-        throw new Error("Court not found or doesn't belong to this venue");
+      if (!court) {
+        throw new Error("Court not found");
       }
 
       // 2. Check for conflicting bookings with row-level locking
@@ -62,10 +62,10 @@ export async function POST(req: NextRequest) {
         where: {
           courtId,
           startTime: {
-            lte: endTime
+            lte: bookingEndTime
           },
           endTime: {
-            gte: startTime
+            gte: bookingStartTime
           },
           status: {
             in: [BookingStatus.PENDING, BookingStatus.CONFIRMED]
@@ -83,8 +83,8 @@ export async function POST(req: NextRequest) {
       }
 
       // 4. Check if the time slot is within court operating hours
-      const slotStartHour = startTime.getHours();
-      const slotEndHour = endTime.getHours();
+      const slotStartHour = bookingStartTime.getHours();
+      const slotEndHour = bookingEndTime.getHours();
       
       if (slotStartHour < court.openTime || slotEndHour > court.closeTime) {
         throw new Error("Booking time is outside court operating hours");
@@ -95,10 +95,10 @@ export async function POST(req: NextRequest) {
         data: {
           userId: token.id as number,
           courtId,
-          startTime,
-          endTime,
+          startTime: bookingStartTime,
+          endTime: bookingEndTime,
           status: BookingStatus.PENDING,
-          notes: userNotes || null,
+          notes: notes || null,
           idempotencyKey: idempotencyKey || `${token.id}-${Date.now()}-${Math.random()}`
         },
         include: {
@@ -118,11 +118,12 @@ export async function POST(req: NextRequest) {
       });
 
       // 6. Create payment record
+      const totalAmount = court.pricePerHour * duration; // Court price is already in paisa
       const payment = await tx.payment.create({
         data: {
           bookingId: booking.id,
-          amount: totalPrice * 100, // Convert to smallest currency unit (paisa)
-          currency: "INR",
+          amount: totalAmount,
+          currency: court.currency || "INR",
           status: "PENDING"
         }
       });
@@ -141,18 +142,21 @@ export async function POST(req: NextRequest) {
       message: "Booking created successfully"
     });
 
-  } catch (error: any) {
-    console.error("Booking creation failed:", error);
+  } catch (error) {
+    // Log error in development only
+    if (process.env.NODE_ENV === 'development') {
+      console.error("Booking creation failed:", error);
+    }
 
     // Handle specific database constraint violations
-    if (error.message.includes("Time slot conflict")) {
+    if (error instanceof Error && error.message.includes("Time slot conflict")) {
       return NextResponse.json(
         { error: "This time slot has been booked by another user. Please select a different time." },
         { status: 409 }
       );
     }
 
-    if (error.message.includes("Unique constraint")) {
+    if (error instanceof Error && error.message.includes("Unique constraint")) {
       return NextResponse.json(
         { error: "A booking already exists for this time slot." },
         { status: 409 }
@@ -160,7 +164,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Handle transaction timeout
-    if (error.message.includes("timeout") || error.code === "P2024") {
+    if (error instanceof Error && (error.message.includes("timeout") || (error as any).code === "P2024")) {
       return NextResponse.json(
         { error: "Booking request timed out. Please try again." },
         { status: 408 }
@@ -168,7 +172,7 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json(
-      { error: error.message || "Booking failed. Please try again." },
+      { error: (error instanceof Error ? error.message : "An unknown error occurred.") || "Booking failed. Please try again." },
       { status: 500 }
     );
   }
@@ -220,7 +224,10 @@ export async function GET(req: NextRequest) {
     });
 
   } catch (error) {
-    console.error("Failed to fetch bookings:", error);
+    // Log error in development only
+    if (process.env.NODE_ENV === 'development') {
+      console.error("Failed to fetch bookings:", error);
+    }
     return NextResponse.json(
       { error: "Failed to fetch booking data" },
       { status: 500 }

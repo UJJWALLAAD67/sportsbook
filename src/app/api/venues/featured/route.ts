@@ -46,7 +46,7 @@ export async function GET() {
       // Get minimum price per hour
       const minPrice = 
         venue.courts.length > 0
-          ? Math.min(...venue.courts.map((court) => court.pricePerHour)) / 100 // Convert to Rupees
+          ? Math.min(...venue.courts.map((court) => court.pricePerHour))  // Convert to Rupees
           : 0;
 
       // Generate tags based on venue data

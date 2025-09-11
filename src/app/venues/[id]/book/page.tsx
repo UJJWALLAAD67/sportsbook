@@ -4,7 +4,15 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
-import { TrashIcon, PlusIcon, ArrowLeftIcon, CheckCircleIcon, BuildingOfficeIcon, CalendarDaysIcon, ClockIcon, ExclamationTriangleIcon,
+import {
+  TrashIcon,
+  PlusIcon,
+  ArrowLeftIcon,
+  CheckCircleIcon,
+  BuildingOfficeIcon,
+  CalendarDaysIcon,
+  ClockIcon,
+  ExclamationTriangleIcon,
 } from "@heroicons/react/24/outline";
 import { loadStripe } from "@stripe/stripe-js";
 
@@ -197,15 +205,18 @@ export default function BookingPage() {
         const data = await response.json();
         setExistingBookings(data.bookings || []);
         setTimeSlots(data.timeSlots || []);
+        setAvailableSlots(data.timeSlots || []); // ✅ properly set
       } else {
         console.error("Failed to fetch availability");
-        setAvailableSlots([]);
+        setExistingBookings([]);
         setTimeSlots([]);
+        setAvailableSlots([]);
       }
     } catch (error) {
       console.error("Error fetching availability:", error);
-      setAvailableSlots([]);
+      setExistingBookings([]);
       setTimeSlots([]);
+      setAvailableSlots([]);
     }
   };
 
@@ -256,18 +267,22 @@ export default function BookingPage() {
       const endTime = new Date(startTime);
       endTime.setHours(startHour + duration, 0, 0, 0);
 
+      // Generate a unique idempotency key for this booking attempt
+      const idempotencyKey = crypto.randomUUID();
+
       // 1. Create booking record in your database
       const bookingResponse = await fetch("/api/bookings", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Idempotency-Key": idempotencyKey, // Add idempotency key
         },
         body: JSON.stringify({
           courtId,
-          startTime: startTime.toISOString(),
-          endTime: endTime.toISOString(),
-          totalAmount: court.pricePerHour * duration,
-          userNotes,
+          date: formatDate(selectedDate, "yyyy-MM-dd"), // Send date string
+          startTime: selectedTimeSlots[0], // Send hour as number
+          duration, // Send duration as number
+          notes: userNotes, // Send userNotes as notes
         }),
       });
 
@@ -276,14 +291,9 @@ export default function BookingPage() {
         throw new Error(errorData.error || "Failed to create booking");
       }
 
-      const booking = await bookingResponse.json();
+      const { booking } = await bookingResponse.json();
 
-      // 2. Create Payment Intent with Stripe
-      const stripe = await stripePromise;
-      if (!stripe) {
-        throw new Error("Stripe.js failed to load.");
-      }
-
+      // 2. Create Payment Intent with Stripe (required for payment)
       const paymentIntentResponse = await fetch("/api/create-payment-intent", {
         method: "POST",
         headers: {
@@ -294,31 +304,19 @@ export default function BookingPage() {
 
       if (!paymentIntentResponse.ok) {
         const errorData = await paymentIntentResponse.json();
-        throw new Error(errorData.error || "Failed to create payment intent");
+        throw new Error(errorData.error || "Failed to initialize payment");
       }
 
       const { clientSecret } = await paymentIntentResponse.json();
 
-      // 3. Confirm the payment on the client side
-      const { error: confirmError } = await stripe.confirmCardPayment(clientSecret, {
-        payment_method: {
-          // For this example, we assume a default payment method or redirect flow
-          // In a real app, you'd collect card details here using PaymentElement
-          // or redirect to Stripe Checkout.
-          // For now, we'll rely on the PaymentIntent being created with a default source
-          // or a redirect that handles the payment method.
-          card: { token: 'tok_visa' }, // This is a test token, replace with actual card element data
-        },
-        return_url: window.location.origin + `/bookings/${booking.id}`, // URL to redirect after payment
-      });
-
-      if (confirmError) {
-        setError(confirmError.message || "Payment failed");
-        // Optionally, you might want to cancel the booking in your DB here
-        // or mark the payment as failed.
-      } else {
-        setBookingSuccess(true);
+      if (!clientSecret) {
+        throw new Error("Failed to initialize payment. Please try again.");
       }
+
+      // 3. Redirect to payment page with client secret
+      router.push(
+        `/booking/${booking.id}/payment?client_secret=${clientSecret}`
+      );
     } catch (err: any) {
       console.error("Error during booking or payment:", err);
       setError(err.message || "An unexpected error occurred.");
@@ -379,9 +377,7 @@ export default function BookingPage() {
               <p className="text-sm text-gray-600">
                 {formatDate(selectedDate, "EEEE, MMMM d, yyyy")} at{" "}
                 {selectedTimeSlots.length > 0
-                  ? `${selectedTimeSlots[0]
-                            .toString()
-                            .padStart(2, "0")}:00`
+                  ? `${selectedTimeSlots[0].toString().padStart(2, "0")}:00`
                   : ""}
               </p>
               <p className="text-sm text-gray-600">
@@ -523,8 +519,7 @@ export default function BookingPage() {
               <div className="grid grid-cols-4 sm:grid-cols-6 gap-3">
                 {timeSlots.map((slot) => {
                   const isSelected = isSlotSelected(slot.hour);
-                  const canSelect =
-                    slot.available && isSlotAvailable(slot.hour);
+                  const canSelect = slot.available;
 
                   return (
                     <button
@@ -646,7 +641,7 @@ export default function BookingPage() {
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Price per hour:</span>
                     <span className="font-medium">
-                      ₹{Math.round(court.pricePerHour / 100)}
+                      ₹{Math.round(court.pricePerHour)}
                     </span>
                   </div>
 

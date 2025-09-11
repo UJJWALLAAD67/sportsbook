@@ -1,8 +1,9 @@
+// NextAuth configuration for authentication with credentials and JWT
 import NextAuth, { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
 import { verifyPassword } from "@/lib/hash";
-import { Role } from "@prisma/client";
+import { Role } from "@/generated/prisma";
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -58,11 +59,11 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user }) {
       // If user object exists (initial sign-in), add its properties to the token.
       if (user) {
-        token.id = user.id;
+        token.id = Number(user.id);
         token.role = user.role;
         token.fullName = user.fullName;
         token.avatarUrl = user.avatarUrl;
-        token.emailVerified = user.emailVerified;
+        token.emailVerified = user.emailVerified as boolean;
         return token;
       }
 

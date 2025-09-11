@@ -3,7 +3,14 @@ import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/prisma";
 import { authOptions } from "@/lib/auth";
 import { venueSchema } from "@/lib/schemas/venue";
-import { uploadImageToCloudinary, deleteImageFromCloudinary } from "@/lib/cloudinary";
+import {
+  uploadImageToCloudinary,
+  deleteImageFromCloudinary,
+} from "@/lib/cloudinary";
+import { z } from "zod";
+import { Prisma } from "@prisma/client";
+
+type VenueFormData = z.infer<typeof venueSchema>;
 
 /**
  * GET handler to fetch a single venue for editing.
@@ -50,7 +57,7 @@ export async function GET(
       ...venue,
       courts: venue.courts.map((court) => ({
         ...court,
-        pricePerHour: court.pricePerHour / 100,
+        pricePerHour: court.pricePerHour,
       })),
     };
 
@@ -85,7 +92,7 @@ export async function PUT(
     }
 
     const contentType = request.headers.get("content-type");
-    let venueData: any;
+    let venueData: VenueFormData;
     let cloudinaryResult = null;
 
     if (contentType?.includes("multipart/form-data")) {
@@ -165,7 +172,7 @@ export async function PUT(
     );
 
     await prisma.$transaction(async (tx) => {
-      const updateData: any = {
+      const updateData: Prisma.VenueUpdateInput = {
         name: venueFields.name,
         description: venueFields.description,
         address: venueFields.address,
@@ -198,7 +205,7 @@ export async function PUT(
         const courtPayload = {
           name: court.name,
           sport: court.sport,
-          pricePerHour: Math.round(court.pricePerHour * 100),
+          pricePerHour: Math.round(court.pricePerHour),
           currency: court.currency,
           openTime: court.openTime,
           closeTime: court.closeTime,
@@ -295,7 +302,7 @@ export async function DELETE(
         try {
           await deleteImageFromCloudinary(existingVenue.imagePublicId);
         } catch (error) {
-          console.error('Failed to delete image from Cloudinary:', error);
+          console.error("Failed to delete image from Cloudinary:", error);
           // Continue with venue deletion even if image deletion fails
         }
       }

@@ -12,7 +12,7 @@ import {
   BuildingOfficeIcon,
   CalendarDaysIcon,
   UserIcon,
-  CheckCircleIcon
+  CheckCircleIcon,
 } from "@heroicons/react/24/outline";
 import { StarIcon as StarSolidIcon } from "@heroicons/react/24/solid";
 
@@ -108,7 +108,7 @@ export default function VenueDetailPage() {
       router.push("/auth/login");
       return;
     }
-    
+
     // Navigate to booking page
     router.push(`/venues/${venueId}/book?courtId=${courtId}`);
   };
@@ -144,8 +144,8 @@ export default function VenueDetailPage() {
             {error || "Venue Not Found"}
           </h1>
           <p className="text-gray-600 mt-2">
-            {error === "Venue not found" 
-              ? "The venue you're looking for doesn't exist." 
+            {error === "Venue not found"
+              ? "The venue you're looking for doesn't exist."
               : "Something went wrong while loading the venue."}
           </p>
           <Link
@@ -166,7 +166,10 @@ export default function VenueDetailPage() {
         <nav className="flex mb-8" aria-label="Breadcrumb">
           <ol className="flex items-center space-x-4">
             <li>
-              <Link href="/venues" className="text-gray-500 hover:text-gray-700">
+              <Link
+                href="/venues"
+                className="text-gray-500 hover:text-gray-700"
+              >
                 Venues
               </Link>
             </li>
@@ -201,10 +204,14 @@ export default function VenueDetailPage() {
 
               <div className="flex justify-between items-start mb-4">
                 <div>
-                  <h1 className="text-3xl font-bold text-gray-900 mb-2">{venue.name}</h1>
+                  <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                    {venue.name}
+                  </h1>
                   <div className="flex items-center text-gray-600 mb-2">
                     <MapPinIcon className="w-5 h-5 mr-2" />
-                    <span>{venue.address}, {venue.city}, {venue.state}</span>
+                    <span>
+                      {venue.address}, {venue.city}, {venue.state}
+                    </span>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {venue.sports.map((sport) => (
@@ -217,42 +224,48 @@ export default function VenueDetailPage() {
                     ))}
                   </div>
                 </div>
-                
+
                 <div className="text-right">
                   {venue.rating > 0 && (
                     <div className="flex items-center mb-1">
                       {renderStars(venue.rating)}
-                      <span className="ml-2 text-lg font-semibold">{venue.rating.toFixed(1)}</span>
+                      <span className="ml-2 text-lg font-semibold">
+                        {venue.rating.toFixed(1)}
+                      </span>
                     </div>
                   )}
                   <p className="text-sm text-gray-600">
-                    {venue.reviewCount} review{venue.reviewCount !== 1 ? 's' : ''}
+                    {venue.reviewCount} review
+                    {venue.reviewCount !== 1 ? "s" : ""}
                   </p>
                 </div>
               </div>
 
-              <p className="text-gray-700 leading-relaxed">{venue.description}</p>
+              <p className="text-gray-700 leading-relaxed">
+                {venue.description}
+              </p>
 
               <div className="mt-4 pt-4 border-t border-gray-200">
                 <div className="flex items-center text-sm text-gray-600">
                   <ClockIcon className="w-4 h-4 mr-2" />
                   <span>
-                    Open {venue.operatingHours.open.toString().padStart(2, '0')}:00 - 
-                    {venue.operatingHours.close.toString().padStart(2, '0')}:00
+                    Open {venue.operatingHours.open.toString().padStart(2, "0")}
+                    :00 -
+                    {venue.operatingHours.close.toString().padStart(2, "0")}:00
                   </span>
                 </div>
                 <div className="flex items-center text-sm text-gray-600 mt-1">
                   <CurrencyDollarIcon className="w-4 h-4 mr-2" />
-                  <span>
-                    Starting from ₹{Math.round(venue.minPrice / 100)}/hour
-                  </span>
+                  <span>Starting from ₹{Math.round(venue.minPrice)}/hour</span>
                 </div>
               </div>
             </div>
 
             {/* Amenities */}
             <div className="bg-white rounded-xl shadow-sm p-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">Amenities</h2>
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                Amenities
+              </h2>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 {venue.amenities.map((amenity) => (
                   <div key={amenity} className="flex items-center">
@@ -265,7 +278,9 @@ export default function VenueDetailPage() {
 
             {/* Courts */}
             <div className="bg-white rounded-xl shadow-sm p-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">Available Courts</h2>
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                Available Courts
+              </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {venue.courts.map((court) => (
                   <div
@@ -279,20 +294,24 @@ export default function VenueDetailPage() {
                   >
                     <div className="flex justify-between items-start mb-3">
                       <div>
-                        <h3 className="font-semibold text-gray-900">{court.name}</h3>
+                        <h3 className="font-semibold text-gray-900">
+                          {court.name}
+                        </h3>
                         <p className="text-sm text-gray-600">{court.sport}</p>
                       </div>
                       <div className="text-right">
-                        <p className="font-semibold text-gray-900">₹{Math.round(court.pricePerHour / 100)}</p>
+                        <p className="font-semibold text-gray-900">
+                          ₹{Math.round(court.pricePerHour / 100)}
+                        </p>
                         <p className="text-xs text-gray-500">per hour</p>
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center text-sm text-gray-600 mb-3">
                       <ClockIcon className="w-4 h-4 mr-1" />
                       <span>
-                        {court.openTime.toString().padStart(2, '0')}:00 - 
-                        {court.closeTime.toString().padStart(2, '0')}:00
+                        {court.openTime.toString().padStart(2, "0")}:00 -
+                        {court.closeTime.toString().padStart(2, "0")}:00
                       </span>
                     </div>
 
@@ -315,11 +334,14 @@ export default function VenueDetailPage() {
               <h2 className="text-xl font-semibold text-gray-900 mb-4">
                 Reviews ({venue.reviewCount})
               </h2>
-              
+
               <div className="space-y-4">
                 {venue.reviews.length > 0 ? (
                   venue.reviews.map((review) => (
-                    <div key={review.id} className="border-b border-gray-200 pb-4 last:border-b-0">
+                    <div
+                      key={review.id}
+                      className="border-b border-gray-200 pb-4 last:border-b-0"
+                    >
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center">
                           {review.user.avatar ? (
@@ -332,7 +354,9 @@ export default function VenueDetailPage() {
                             <UserIcon className="w-8 h-8 text-gray-400 mr-3" />
                           )}
                           <div>
-                            <p className="font-medium text-gray-900">{review.user.name}</p>
+                            <p className="font-medium text-gray-900">
+                              {review.user.name}
+                            </p>
                             <div className="flex items-center">
                               {renderStars(review.rating)}
                             </div>
@@ -360,7 +384,7 @@ export default function VenueDetailPage() {
                 </div>
               )}
             </div>
-          </div>          
+          </div>
         </div>
       </div>
     </div>

@@ -5,13 +5,13 @@ import { authOptions } from "@/lib/auth";
 import { BookingStatus } from "@/generated/prisma";
 
 export async function GET() {
-  const session = await getServerSession(authOptions);
-
-  if (!session || session.user.role !== "OWNER") {
-    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-  }
-
   try {
+    const session = await getServerSession(authOptions);
+
+    if (!session || session.user.role !== "OWNER") {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
     const owner = await prisma.facilityOwner.findUnique({
       where: { userId: session.user.id },
       include: {
@@ -249,13 +249,12 @@ export async function GET() {
       ? Math.round((((thisMonthEarnings._sum.amount || 0) - (lastMonthEarnings._sum.amount || 0)) / (lastMonthEarnings._sum.amount || 0)) * 100)
       : (thisMonthEarnings._sum.amount || 0) > 0 ? 100 : 0;
 
-    // Convert amounts from paisa to rupees
-    const totalEarningsInRupees = Math.round((totalEarnings._sum.amount || 0) / 100);
+    const totalEarningsValue = totalEarnings._sum.amount || 0;
 
     const stats = {
       totalVenues,
       totalBookings,
-      totalEarnings: totalEarningsInRupees,
+      totalEarnings: totalEarningsValue,
       activeVenues,
       todayBookings,
       pendingApprovals: pendingVenues,
@@ -276,7 +275,7 @@ export async function GET() {
   } catch (error) {
     console.error("Error fetching dashboard stats:", error);
     return NextResponse.json(
-      { message: "Internal Server Error" },
+      { message: "Internal Server Error", error: error.message },
       { status: 500 }
     );
   }

@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
         id: c.id,
         name: c.name,
         sport: c.sport,
-        pricePerHour: Math.round(c.pricePerHour / 100),
+        pricePerHour: c.pricePerHour,
         currency: c.currency,
         openTime: c.openTime,
         closeTime: c.closeTime,

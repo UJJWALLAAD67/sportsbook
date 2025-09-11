@@ -1,3 +1,4 @@
+// API route to fetch individual booking details for authenticated users
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -109,7 +110,10 @@ export async function GET(
     return NextResponse.json(transformedBooking);
 
   } catch (error) {
-    console.error("Error fetching booking details:", error);
+    // Log error in development only
+    if (process.env.NODE_ENV === 'development') {
+      console.error("Booking fetch error:", error);
+    }
     return NextResponse.json(
       { error: "Failed to fetch booking details" },
       { status: 500 }
