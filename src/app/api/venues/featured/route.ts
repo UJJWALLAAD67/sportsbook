@@ -46,13 +46,13 @@ export async function GET() {
       // Get minimum price per hour
       const minPrice = 
         venue.courts.length > 0
-          ? Math.min(...venue.courts.map((court) => court.pricePerHour))  // Convert to Rupees
+          ? Math.min(...venue.courts.map((court) => Number(court.pricePerHour))) // Already in Rupees
           : 0;
 
       // Generate tags based on venue data
       const tags = [];
       if (avgRating >= 4.5) tags.push("Top Rated");
-      if (minPrice < 1000) tags.push("Budget Friendly"); // Less than ₹1000
+      if (minPrice < 500) tags.push("Budget Friendly"); // Less than ₹500
       if (venue.amenities.includes("Parking")) tags.push("Parking");
       if (venue.amenities.includes("Lighting")) tags.push("Night Play");
 

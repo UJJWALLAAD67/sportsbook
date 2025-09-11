@@ -240,7 +240,7 @@ export default function PaymentPage() {
   const calculateTotalPrice = () => {
     if (!booking) return 0;
     const duration = (new Date(booking.endTime).getTime() - new Date(booking.startTime).getTime()) / (1000 * 60 * 60);
-    return Math.round((booking.court.pricePerHour * duration) / 100);
+    return Math.round(Number(booking.court.pricePerHour) * duration);
   };
 
   return (

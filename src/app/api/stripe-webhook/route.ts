@@ -28,8 +28,8 @@ export async function POST(req: NextRequest) {
       process.env.STRIPE_WEBHOOK_SECRET! // Use the environment variable
     );
   } catch (err) {
-    console.error(`Webhook signature verification failed: ${err.message}`);
-    return NextResponse.json({ message: `Webhook Error: ${err.message}` }, { status: 400 });
+    console.error(`Webhook signature verification failed:`, err);
+    return NextResponse.json({ message: `Webhook Error: ${err instanceof Error ? err.message : 'Unknown error'}` }, { status: 400 });
   }
 
   if (relevantEvents.has(event.type)) {
@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
               where: { stripePaymentIntentId: paymentIntentSucceeded.id },
               data: { 
                 status: "SUCCEEDED", 
-                receiptUrl: paymentIntentSucceeded.charges.data[0]?.receipt_url || null 
+                receiptUrl: (paymentIntentSucceeded as any).charges?.data[0]?.receipt_url || null 
               },
             });
 
@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
         case "charge.refunded":
           const chargeRefunded = event.data.object;
           await prisma.payment.update({
-            where: { stripePaymentIntentId: chargeRefunded.payment_intent },
+            where: { stripePaymentIntentId: chargeRefunded.payment_intent as string },
             data: { status: "REFUNDED" },
           });
           // Optionally update booking status if a full refund means cancellation

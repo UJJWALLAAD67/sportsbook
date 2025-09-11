@@ -15,7 +15,7 @@ export const venueSchema = z.object({
     id: z.number().optional(),
     name: z.string().min(1, "Court name is required"),
     sport: z.string().min(1, "Sport is required"),
-    pricePerHour: z.number().positive("Price must be positive"),
+    pricePerHour: z.number().positive("Price must be positive").min(1, "Price must be at least ₹1").max(10000, "Price cannot exceed ₹10,000"),
     currency: z.string(), // Changed to required string
     openTime: z.number().min(0).max(23),
     closeTime: z.number().min(1).max(24),

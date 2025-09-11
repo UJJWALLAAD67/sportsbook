@@ -72,9 +72,9 @@ export async function GET(
     const sports = [...new Set(venue.courts.map((court) => court.sport))];
 
     // Get price range
-    const prices = venue.courts.map((court) => court.pricePerHour);
-    const minPrice = prices.length > 0 ? Math.min(...prices)  : 0; // Convert to Rupees
-    const maxPrice = prices.length > 0 ? Math.max(...prices)  : 0; // Convert to Rupees
+    const prices = venue.courts.map((court) => Number(court.pricePerHour));
+    const minPrice = prices.length > 0 ? Math.min(...prices)  : 0;
+    const maxPrice = prices.length > 0 ? Math.max(...prices)  : 0;
 
     // Get operating hours
     const openTimes = venue.courts.map((court) => court.openTime);

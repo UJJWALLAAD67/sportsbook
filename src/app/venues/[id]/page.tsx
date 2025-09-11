@@ -256,7 +256,7 @@ export default function VenueDetailPage() {
                 </div>
                 <div className="flex items-center text-sm text-gray-600 mt-1">
                   <CurrencyDollarIcon className="w-4 h-4 mr-2" />
-                  <span>Starting from ₹{Math.round(venue.minPrice)}/hour</span>
+                  <span>Starting from ₹{Number(venue.minPrice).toFixed(0)}/hour</span>
                 </div>
               </div>
             </div>
@@ -301,7 +301,7 @@ export default function VenueDetailPage() {
                       </div>
                       <div className="text-right">
                         <p className="font-semibold text-gray-900">
-                          ₹{Math.round(court.pricePerHour / 100)}
+                          ₹{Number(court.pricePerHour).toFixed(0)}
                         </p>
                         <p className="text-xs text-gray-500">per hour</p>
                       </div>

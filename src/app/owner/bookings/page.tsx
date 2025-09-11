@@ -211,7 +211,7 @@ export default function OwnerBookingsPage() {
                       {getStatusChip(booking.status)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">₹{booking.payment ? booking.payment.amount / 100 : 'N/A'}</div>
+                      <div className="text-sm text-gray-900">₹{booking.payment ? Math.round(booking.payment.amount / 100) : 'N/A'}</div>
                       <div className={`text-sm ${booking.payment?.status === 'SUCCEEDED' ? 'text-green-600' : 'text-gray-500'}`}>
                         {booking.payment?.status}
                       </div>

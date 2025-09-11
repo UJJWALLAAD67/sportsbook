@@ -172,7 +172,7 @@ export async function PUT(
     );
 
     await prisma.$transaction(async (tx) => {
-      const updateData: Prisma.VenueUpdateInput = {
+      const updateData: any = {
         name: venueFields.name,
         description: venueFields.description,
         address: venueFields.address,
@@ -205,7 +205,7 @@ export async function PUT(
         const courtPayload = {
           name: court.name,
           sport: court.sport,
-          pricePerHour: Math.round(court.pricePerHour),
+          pricePerHour: court.pricePerHour,
           currency: court.currency,
           openTime: court.openTime,
           closeTime: court.closeTime,

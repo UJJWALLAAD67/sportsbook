@@ -118,7 +118,7 @@ export async function POST(req: NextRequest) {
       });
 
       // 6. Create payment record
-      const totalAmount = court.pricePerHour * duration; // Court price is already in paisa
+      const totalAmount = Number(court.pricePerHour) * duration * 100; // Convert rupees to paisa for payment
       const payment = await tx.payment.create({
         data: {
           bookingId: booking.id,

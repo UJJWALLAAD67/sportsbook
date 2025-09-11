@@ -95,7 +95,7 @@ export async function POST(
     // Use a transaction to update both payment and booking status atomically
     const result = await prisma.$transaction(async (tx) => {
       let paymentStatus = "SUCCEEDED";
-      let bookingStatus = BookingStatus.CONFIRMED;
+      let bookingStatus: "CONFIRMED" | "CANCELLED" | "PENDING" = BookingStatus.CONFIRMED;
 
       // Handle different payment scenarios
       if (status === "succeeded") {
@@ -119,7 +119,7 @@ export async function POST(
         if (paymentIntent.status === "succeeded") {
           paymentStatus = "SUCCEEDED";
           bookingStatus = BookingStatus.CONFIRMED;
-        } else if (paymentIntent.status === "canceled" || paymentIntent.status === "payment_failed") {
+        } else if (paymentIntent.status === "canceled") {
           paymentStatus = "FAILED";
           bookingStatus = BookingStatus.CANCELLED;
         } else {
@@ -133,11 +133,11 @@ export async function POST(
 
       // Update payment record
       const updatedPayment = await tx.payment.update({
-        where: { id: booking.payment.id },
+        where: { id: booking.payment!.id },
         data: {
           status: paymentStatus as any,
-          stripePaymentIntentId: paymentIntentId || booking.payment.stripePaymentIntentId,
-          paymentMethod: paymentMethodId || booking.payment.paymentMethod
+          stripePaymentIntentId: paymentIntentId || booking.payment!.stripePaymentIntentId,
+          paymentMethod: paymentMethodId || booking.payment!.paymentMethod
         }
       });
 

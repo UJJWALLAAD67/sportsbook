@@ -20,14 +20,14 @@ export async function GET(request: Request) {
     const sortOrder = searchParams.get("sortOrder") || "asc";
 
     // Build where clause
-    const where: Prisma.VenueWhereInput = {
+    const whereConditions: any[] = [];
+    const where: any = {
       approved: true,
-      AND: [],
     };
 
     // Search filter
     if (search) {
-      where.AND.push({
+      whereConditions.push({
         OR: [
           { name: { contains: search, mode: "insensitive" } },
           { description: { contains: search, mode: "insensitive" } },
@@ -38,14 +38,14 @@ export async function GET(request: Request) {
 
     // City filter
     if (city) {
-      where.AND.push({
+      whereConditions.push({
         city: { equals: city, mode: "insensitive" },
       });
     }
 
     // Sport filter
     if (sport) {
-      where.AND.push({
+      whereConditions.push({
         courts: {
           some: {
             sport: { equals: sport, mode: "insensitive" },
@@ -56,11 +56,11 @@ export async function GET(request: Request) {
 
     // Price filter
     if (minPrice || maxPrice) {
-      const priceFilter: Prisma.IntFilter = {};
-      if (minPrice) priceFilter.gte = parseInt(minPrice);
-      if (maxPrice) priceFilter.lte = parseInt(maxPrice);
+      const priceFilter: any = {};
+      if (minPrice) priceFilter.gte = parseFloat(minPrice);
+      if (maxPrice) priceFilter.lte = parseFloat(maxPrice);
 
-      where.AND.push({
+      whereConditions.push({
         courts: {
           some: {
             pricePerHour: priceFilter,
@@ -71,11 +71,16 @@ export async function GET(request: Request) {
 
     // Rating filter
     if (rating) {
-      where.AND.push({
+      whereConditions.push({
         rating: {
           gte: parseFloat(rating),
         },
       });
+    }
+
+    // Apply conditions to where clause
+    if (whereConditions.length > 0) {
+      where.AND = whereConditions;
     }
     console.log("Prisma Where Clause:", JSON.stringify(where, null, 2));
 
@@ -83,7 +88,7 @@ export async function GET(request: Request) {
     const skip = (page - 1) * limit;
 
     // Build order by clause
-    let orderBy: Prisma.VenueOrderByWithRelationInput = {};
+    let orderBy: any = {};
     switch (sortBy) {
       case "price":
         orderBy = {
@@ -137,7 +142,7 @@ export async function GET(request: Request) {
     console.log("Venues from DB:", venues.length);
 
     // Transform venues with computed fields
-    let transformedVenues = venues.map((venue) => {
+    const transformedVenues = venues.map((venue) => {
       // Calculate average rating
       const avgRating =
         venue.reviews.length > 0
@@ -148,15 +153,15 @@ export async function GET(request: Request) {
       // Get unique sports
       const sports = [...new Set(venue.courts.map((court) => court.sport))];
 
-      // Get price range
-      const prices = venue.courts.map((court) => court.pricePerHour);
+      // Get price range (convert Decimal to number)
+      const prices = venue.courts.map((court) => Number(court.pricePerHour));
       const minPricePerHour = prices.length > 0 ? Math.min(...prices) : 0;
       const maxPricePerHour = prices.length > 0 ? Math.max(...prices) : 0;
 
       // Generate tags
       const tags = [];
       if (avgRating >= 4.5) tags.push("Top Rated");
-      if (minPricePerHour < 1000) tags.push("Budget Friendly"); // Less than ₹1000
+      if (minPricePerHour < 500) tags.push("Budget Friendly"); // Less than ₹500
       if (venue.amenities.includes("Parking")) tags.push("Parking");
       if (venue.amenities.includes("Lighting")) tags.push("Night Play");
 

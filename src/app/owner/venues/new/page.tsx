@@ -56,7 +56,7 @@ export default function NewVenuePage() {
         {
           name: "Court 1",
           sport: "Badminton",
-          pricePerHour: 10,
+          pricePerHour: 500,
           currency: "INR",
           openTime: 6,
           closeTime: 22,
@@ -299,7 +299,7 @@ export default function NewVenuePage() {
                   append({
                     name: `Court ${fields.length + 1}`,
                     sport: "Badminton",
-                    pricePerHour: 0,
+                    pricePerHour: 500,
                     currency: "INR",
                     openTime: 6,
                     closeTime: 22,
@@ -382,7 +382,7 @@ export default function NewVenuePage() {
                           valueAsNumber: true,
                         })}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                        placeholder="10"
+                        placeholder="500"
                       />
                       {errors.courts?.[index]?.pricePerHour && (
                         <p className="mt-1 text-sm text-red-600">

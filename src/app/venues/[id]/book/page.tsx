@@ -251,7 +251,7 @@ export default function BookingPage() {
 
   const getTotalPrice = () => {
     if (!court || selectedTimeSlots.length === 0) return 0;
-    return Math.round((court.pricePerHour * duration) / 100);
+    return Math.round(Number(court.pricePerHour) * duration);
   };
 
   const handleBooking = async () => {
@@ -466,7 +466,7 @@ export default function BookingPage() {
                 </h2>
                 <p className="text-primary-700">{court.sport}</p>
                 <p className="text-lg font-semibold text-primary-900 mt-2">
-                  ₹{court.pricePerHour / 100} per hour
+                  ₹{Number(court.pricePerHour)} per hour
                 </p>
               </div>
             </div>
@@ -641,7 +641,7 @@ export default function BookingPage() {
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Price per hour:</span>
                     <span className="font-medium">
-                      ₹{Math.round(court.pricePerHour)}
+                      ₹{Number(court.pricePerHour).toFixed(0)}
                     </span>
                   </div>
 

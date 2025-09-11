@@ -174,7 +174,7 @@ export default function BookingPage() {
 
   const calculateTotalPrice = () => {
     if (!court || !duration) return 0;
-    return Math.round((court.pricePerHour * duration) / 100); // Convert from paisa to rupees
+    return Math.round(Number(court.pricePerHour) * duration); // Price already in rupees
   };
 
   const onSubmit = async (data: BookingForm) => {
@@ -470,7 +470,7 @@ export default function BookingPage() {
                   <div className="flex items-center text-sm">
                     <CurrencyRupeeIcon className="w-4 h-4 text-gray-400 mr-2" />
                     <span className="text-gray-600">
-                      ₹{Math.round(court.pricePerHour / 100)}/hour
+                      ₹{Number(court.pricePerHour).toFixed(0)}/hour
                     </span>
                   </div>
                 </div>

@@ -64,7 +64,7 @@ export default function VenuesPage() {
     searchParams.get("city") || ""
   );
   const [minPrice, setMinPrice] = useState(searchParams.get("minPrice") || "");
-  const [maxPrice, setMaxPrice] = useState(searchParams.get("maxPrice") || "5000");
+  const [maxPrice, setMaxPrice] = useState(searchParams.get("maxPrice") || "");
   const [minRating, setMinRating] = useState(searchParams.get("rating") || "");
   const [sortBy, setSortBy] = useState(searchParams.get("sortBy") || "name");
   const [currentPage, setCurrentPage] = useState(
@@ -89,6 +89,10 @@ export default function VenuesPage() {
       if (response.ok) {
         const venuesData = await response.json();
         setData(venuesData);
+      } else {
+        console.error("API Response not ok:", response.status, response.statusText);
+        const errorText = await response.text();
+        console.error("Error response:", errorText);
       }
     } catch (error) {
       console.error("Error fetching venues:", error);
@@ -119,7 +123,7 @@ export default function VenuesPage() {
     setSelectedSport("");
     setSelectedCity("");
     setMinPrice("");
-    setMaxPrice("5000");
+    setMaxPrice("");
     setMinRating("");
     setSortBy("name");
     setCurrentPage(1);
@@ -389,7 +393,7 @@ export default function VenuesPage() {
 
                         <div className="flex justify-between items-center mb-3">
                           <span className="text-lg font-bold text-primary-600">
-                            ₹{Math.round(venue.minPricePerHour / 100)}/hour
+                            ₹{Number(venue.minPricePerHour).toFixed(0)}/hour
                           </span>
                           <span className="text-sm text-gray-500">
                             {venue.courts.length} court

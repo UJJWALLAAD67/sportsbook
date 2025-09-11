@@ -360,7 +360,7 @@ export default function BookingDetailPage() {
                         ₹{Math.round(booking.totalAmount / 100)}
                       </p>
                       <p className="text-sm text-gray-500">
-                        ₹{Math.round(booking.court.pricePerHour / 100)}/hour × {calculateDuration()} hour{calculateDuration() !== 1 ? 's' : ''}
+                        ₹{Number(booking.court.pricePerHour).toFixed(0)}/hour × {calculateDuration()} hour{calculateDuration() !== 1 ? 's' : ''}
                       </p>
                     </div>
                   </div>

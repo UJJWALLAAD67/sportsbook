@@ -46,11 +46,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Calculate amount in smallest currency unit (e.g., cents for USD, paisa for INR)
-    // Assuming pricePerHour is already in paisa/cents from court model
+    // Calculate amount in smallest currency unit (paisa for INR)
+    // pricePerHour is stored in rupees, convert to paisa for Stripe
     const durationInMilliseconds = booking.endTime.getTime() - booking.startTime.getTime();
     const durationInHours = durationInMilliseconds / (1000 * 60 * 60);
-    const amount = Math.round(booking.court.pricePerHour * durationInHours);
+    const amountInRupees = Number(booking.court.pricePerHour) * durationInHours;
+    const amount = Math.round(amountInRupees * 100); // Convert rupees to paisa
 
     // Create a PaymentIntent with the order amount and currency
     const paymentIntent = await stripe.paymentIntents.create({
