@@ -1,10 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
-
 generator client {
   provider = "prisma-client-js"
   output   = "../src/generated/prisma"
@@ -16,7 +9,128 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Models
+model Account {
+  id                Int     @id @default(autoincrement())
+  userId            Int
+  provider          String
+  providerAccountId String
+  access_token      String?
+  refresh_token     String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  User              User    @relation(fields: [userId], references: [id])
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Booking {
+  id             Int           @id @default(autoincrement())
+  userId         Int
+  courtId        Int
+  startTime      DateTime
+  endTime        DateTime
+  status         BookingStatus @default(PENDING)
+  paymentId      Int?          @unique
+  idempotencyKey String?       @unique
+  notes          String?
+  createdAt      DateTime      @default(now())
+  Court          Court         @relation(fields: [courtId], references: [id])
+  User           User          @relation(fields: [userId], references: [id])
+  Payment        Payment?
+
+  @@unique([courtId, startTime])
+  @@index([courtId])
+  @@index([status])
+  @@index([userId])
+}
+
+model Court {
+  id           Int       @id @default(autoincrement())
+  venueId      Int
+  name         String
+  sport        String
+  pricePerHour Decimal   @db.Decimal(10, 2)
+  currency     String    @default("INR")
+  openTime     Int
+  closeTime    Int
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime
+  Booking      Booking[]
+  Venue        Venue     @relation(fields: [venueId], references: [id])
+
+  @@index([sport])
+}
+
+model EmailOtp {
+  id        Int      @id @default(autoincrement())
+  email     String
+  tokenHash String
+  expiresAt DateTime
+  attempts  Int      @default(0)
+  verified  Boolean  @default(false)
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([email])
+  @@index([expiresAt])
+}
+
+model FacilityOwner {
+  id           Int      @id @default(autoincrement())
+  userId       Int      @unique
+  phone        String?
+  businessName String?
+  address      String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime
+  User         User     @relation(fields: [userId], references: [id])
+  Venue        Venue[]
+}
+
+model Payment {
+  id                    Int           @id @default(autoincrement())
+  bookingId             Int?          @unique
+  gateway               String        @default("stripe")
+  stripePaymentIntentId String?       @unique
+  stripeChargeId        String?
+  amount                Int
+  currency              String        @default("INR")
+  status                PaymentStatus @default(PENDING)
+  receiptUrl            String?
+  paymentMethod         String?
+  createdAt             DateTime      @default(now())
+  Booking               Booking?      @relation(fields: [bookingId], references: [id])
+
+  @@index([status])
+  @@index([stripePaymentIntentId])
+}
+
+model Review {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  venueId   Int
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+  User      User     @relation(fields: [userId], references: [id])
+  Venue     Venue    @relation(fields: [venueId], references: [id])
+
+  @@index([userId])
+  @@index([venueId])
+}
+
+model Session {
+  id           Int      @id @default(autoincrement())
+  sessionToken String   @unique
+  userId       Int
+  expires      DateTime
+  User         User     @relation(fields: [userId], references: [id])
+
+  @@index([expires])
+  @@index([userId])
+}
 
 model User {
   id             Int            @id @default(autoincrement())
@@ -27,166 +141,41 @@ model User {
   passwordHash   String
   role           Role           @default(USER)
   emailVerified  Boolean        @default(false)
-  ownerProfile   FacilityOwner?
   ownerProfileId Int?
-  bookings       Booking[]
-  reviews        Review[]
   createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
-  Session        Session[]
+  updatedAt      DateTime
   Account        Account[]
-}
-
-model FacilityOwner {
-  id           Int      @id @default(autoincrement())
-  user         User     @relation(fields: [userId], references: [id])
-  userId       Int      @unique
-  phone        String?
-  businessName String?
-  address      String?
-  venues       Venue[]
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  Booking        Booking[]
+  FacilityOwner  FacilityOwner?
+  Review         Review[]
+  Session        Session[]
 }
 
 model Venue {
-  id          Int           @id @default(autoincrement())
-  owner       FacilityOwner @relation(fields: [ownerId], references: [id])
-  ownerId     Int
-  name        String
-  slug        String        @unique
-  description String?
-  address     String
-  city        String
-  state       String?
-  country     String?       @default("India")
-  latitude    Float?
-  longitude   Float?
-  amenities     String[]      @default([]) // e.g., ["parking", "lights"]
-  image         String?       // Cloudinary secure_url for the venue image
-  imagePublicId String?       // Cloudinary public_id for image management
+  id            Int           @id @default(autoincrement())
+  ownerId       Int
+  name          String
+  slug          String        @unique
+  description   String?
+  address       String
+  city          String
+  state         String?
+  country       String?       @default("India")
+  latitude      Float?
+  longitude     Float?
+  amenities     String[]      @default([])
+  image         String?
+  imagePublicId String?
   approved      Boolean       @default(false)
-  rating      Float? // optional aggregate
-  courts      Court[]
-  reviews     Review[]
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  rating        Float?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime
+  Court         Court[]
+  Review        Review[]
+  FacilityOwner FacilityOwner @relation(fields: [ownerId], references: [id])
 
-  @@index([city])
   @@index([approved])
-}
-
-model Court {
-  id           Int       @id @default(autoincrement())
-  venue        Venue     @relation(fields: [venueId], references: [id])
-  venueId      Int
-  name         String
-  sport        String // e.g., "Badminton", "Tennis", "Football"
-  pricePerHour Decimal @db.Decimal(10, 2) // INR
-  currency     String    @default("INR")
-  openTime     Int // hour in 24h, e.g., 6
-  closeTime    Int // hour in 24h, e.g., 22
-  bookings     Booking[]
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-
-  @@index([sport])
-}
-
-model Booking {
-  id             Int           @id @default(autoincrement())
-  user           User          @relation(fields: [userId], references: [id])
-  userId         Int
-  court          Court         @relation(fields: [courtId], references: [id])
-  courtId        Int
-  startTime      DateTime
-  endTime        DateTime
-  status         BookingStatus @default(PENDING)
-  payment        Payment?
-  paymentId      Int?          @unique
-  idempotencyKey String?       @unique
-  notes          String?
-  createdAt      DateTime      @default(now())
-
-  // Prevent two exact same startTime bookings for same court
-  @@unique([courtId, startTime])
-  @@index([userId])
-  @@index([courtId])
-  @@index([status])
-}
-
-model Payment {
-  id                    Int           @id @default(autoincrement())
-  booking               Booking?      @relation(fields: [bookingId], references: [id])
-  bookingId             Int?          @unique
-  gateway               String        @default("stripe")
-  stripePaymentIntentId String?       @unique
-  stripeChargeId        String? // optional
-  amount                Int // smallest currency unit
-  currency              String        @default("INR")
-  status                PaymentStatus @default(PENDING)
-  receiptUrl            String? // Stripe receipt URL
-  paymentMethod         String?
-  createdAt             DateTime      @default(now())
-
-  @@index([stripePaymentIntentId])
-  @@index([status])
-}
-
-model Review {
-  id        Int      @id @default(autoincrement())
-  user      User     @relation(fields: [userId], references: [id])
-  userId    Int
-  venue     Venue    @relation(fields: [venueId], references: [id])
-  venueId   Int
-  rating    Int
-  comment   String?
-  createdAt DateTime @default(now())
-
-  @@index([venueId])
-  @@index([userId])
-}
-
-model EmailOtp {
-  id        Int      @id @default(autoincrement())
-  email     String
-  tokenHash String // store hashed OTP (bcrypt or sha256 with salt)
-  expiresAt DateTime
-  attempts  Int      @default(0)
-  verified  Boolean  @default(false)
-  metadata  Json?  // Store pending registration data as JSON
-  createdAt DateTime @default(now())
-
-  @@index([email])
-  @@index([expiresAt])
-}
-
-// Optional NextAuth-compatible Session / Account models (helpful if you decide to use NextAuth adapter)
-model Session {
-  id           Int      @id @default(autoincrement())
-  sessionToken String   @unique
-  user         User     @relation(fields: [userId], references: [id])
-  userId       Int
-  expires      DateTime
-
-  @@index([userId])
-  @@index([expires])
-}
-
-model Account {
-  id                Int     @id @default(autoincrement())
-  user              User    @relation(fields: [userId], references: [id])
-  userId            Int
-  provider          String
-  providerAccountId String
-  access_token      String?
-  refresh_token     String?
-  expires_at        Int?
-  token_type        String?
-  scope             String?
-
-  @@unique([provider, providerAccountId])
-  @@index([userId])
+  @@index([city])
 }
 
 model VerificationToken {
@@ -196,13 +185,6 @@ model VerificationToken {
   expires    DateTime
 
   @@index([identifier])
-}
-
-// Enums
-enum Role {
-  USER
-  OWNER
-  ADMIN
 }
 
 enum BookingStatus {
@@ -217,4 +199,10 @@ enum PaymentStatus {
   SUCCEEDED
   FAILED
   REFUNDED
+}
+
+enum Role {
+  USER
+  OWNER
+  ADMIN
 }
