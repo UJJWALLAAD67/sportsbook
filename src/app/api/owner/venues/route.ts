@@ -224,10 +224,16 @@ export async function GET(request: Request) {
 
     const venues = await prisma.venue.findMany({
       where: { ownerId: owner.id },
-      include: { courts: true },
+      include: { Court: true },
     });
 
-    return NextResponse.json(venues);
+    // Transform the response to maintain frontend compatibility
+    const transformedVenues = venues.map(venue => ({
+      ...venue,
+      courts: venue.Court // Map Court to courts for frontend compatibility
+    }));
+
+    return NextResponse.json(transformedVenues);
   } catch (error) {
     console.error("Error fetching venues:", error);
     return NextResponse.json(

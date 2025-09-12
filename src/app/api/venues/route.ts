@@ -46,7 +46,7 @@ export async function GET(request: Request) {
     // Sport filter
     if (sport) {
       whereConditions.push({
-        courts: {
+        Court: {
           some: {
             sport: { equals: sport, mode: "insensitive" },
           },
@@ -61,7 +61,7 @@ export async function GET(request: Request) {
       if (maxPrice) priceFilter.lte = parseFloat(maxPrice);
 
       whereConditions.push({
-        courts: {
+        Court: {
           some: {
             pricePerHour: priceFilter,
           },
@@ -92,7 +92,7 @@ export async function GET(request: Request) {
     switch (sortBy) {
       case "price":
         orderBy = {
-          courts: {
+          Court: {
             _min: {
               pricePerHour: sortOrder as "asc" | "desc",
             },
@@ -113,7 +113,7 @@ export async function GET(request: Request) {
       prisma.venue.findMany({
         where,
         include: {
-          courts: {
+          Court: {
             select: {
               id: true,
               name: true,
@@ -122,14 +122,14 @@ export async function GET(request: Request) {
               currency: true,
             },
           },
-          reviews: {
+          Review: {
             select: {
               rating: true,
             },
           },
           _count: {
             select: {
-              reviews: true,
+              Review: true,
             },
           },
         },
@@ -145,16 +145,16 @@ export async function GET(request: Request) {
     const transformedVenues = venues.map((venue) => {
       // Calculate average rating
       const avgRating =
-        venue.reviews.length > 0
-          ? venue.reviews.reduce((sum, review) => sum + review.rating, 0) /
-            venue.reviews.length
+        venue.Review.length > 0
+          ? venue.Review.reduce((sum, review) => sum + review.rating, 0) /
+            venue.Review.length
           : 0;
 
       // Get unique sports
-      const sports = [...new Set(venue.courts.map((court) => court.sport))];
+      const sports = [...new Set(venue.Court.map((court) => court.sport))];
 
       // Get price range (convert Decimal to number)
-      const prices = venue.courts.map((court) => Number(court.pricePerHour));
+      const prices = venue.Court.map((court) => Number(court.pricePerHour));
       const minPricePerHour = prices.length > 0 ? Math.min(...prices) : 0;
       const maxPricePerHour = prices.length > 0 ? Math.max(...prices) : 0;
 
@@ -174,15 +174,15 @@ export async function GET(request: Request) {
         city: venue.city,
         state: venue.state,
         rating: Math.round(avgRating * 10) / 10,
-        reviewCount: venue._count.reviews,
+        reviewCount: venue._count.Review,
         sports,
         minPricePerHour,
         maxPricePerHour,
-        currency: venue.courts[0]?.currency || "INR",
+        currency: venue.Court[0]?.currency || "INR",
         amenities: venue.amenities,
         image: venue.image || null,
         tags: tags.slice(0, 3),
-        courts: venue.courts,
+        courts: venue.Court,
       };
     });
 
@@ -194,7 +194,7 @@ export async function GET(request: Request) {
         distinct: ["city"],
       }),
       prisma.court.findMany({
-        where: { venue: { approved: true } },
+        where: { Venue: { approved: true } },
         select: { sport: true },
         distinct: ["sport"],
       }),

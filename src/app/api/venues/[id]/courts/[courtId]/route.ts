@@ -25,12 +25,12 @@ export async function GET(
       where: {
         id: courtId,
         venueId: venueId,
-        venue: {
+        Venue: {
           approved: true
         }
       },
       include: {
-        venue: {
+        Venue: {
           select: {
             id: true,
             name: true,

@@ -80,7 +80,7 @@ export async function POST(
       include: {
         court: {
           include: {
-            venue: {
+            Venue: {
               select: {
                 name: true
               }

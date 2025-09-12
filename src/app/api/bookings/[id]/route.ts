@@ -37,7 +37,7 @@ export async function GET(
       include: {
         court: {
           include: {
-            venue: {
+            Venue: {
               select: {
                 id: true,
                 name: true,
@@ -56,7 +56,7 @@ export async function GET(
             paymentMethod: true
           }
         },
-        user: {
+        User: {
           select: {
             id: true,
             fullName: true,
@@ -86,12 +86,12 @@ export async function GET(
         name: booking.court.name,
         sport: booking.court.sport,
         pricePerHour: booking.court.pricePerHour,
-        venue: {
-          id: booking.court.venue.id,
-          name: booking.court.venue.name,
-          address: booking.court.venue.address,
-          city: booking.court.venue.city,
-          state: booking.court.venue.state
+        Venue: {
+          id: booking.court.Venue.id,
+          name: booking.court.Venue.name,
+          address: booking.court.Venue.address,
+          city: booking.court.Venue.city,
+          state: booking.court.Venue.state
         }
       },
       payment: booking.payment ? {
@@ -101,9 +101,9 @@ export async function GET(
         paymentMethod: booking.payment.paymentMethod
       } : null,
       user: {
-        id: booking.user.id,
-        fullName: booking.user.fullName,
-        email: booking.user.email
+        id: booking.User.id,
+        fullName: booking.User.fullName,
+        email: booking.User.email
       }
     };
 

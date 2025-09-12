@@ -56,7 +56,7 @@ export async function POST(
         payment: true,
         court: {
           include: {
-            venue: {
+            Venue: {
               select: {
                 id: true,
                 name: true,
@@ -150,7 +150,7 @@ export async function POST(
         include: {
           court: {
             include: {
-              venue: {
+              Venue: {
                 select: {
                   id: true,
                   name: true,

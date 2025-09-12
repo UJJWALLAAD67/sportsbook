@@ -28,7 +28,7 @@ export async function GET(request: Request) {
     const court = await prisma.court.findUnique({
       where: { id: courtId },
       include: {
-        venue: {
+        Venue: {
           select: {
             approved: true
           }
@@ -36,7 +36,7 @@ export async function GET(request: Request) {
       }
     });
 
-    if (!court || !court.venue.approved) {
+    if (!court || !court.Venue.approved) {
       return NextResponse.json(
         { error: "Court not found or venue not approved" },
         { status: 404 }

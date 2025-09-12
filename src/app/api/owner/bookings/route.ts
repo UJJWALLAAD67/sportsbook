@@ -25,13 +25,13 @@ export async function GET(request: Request) {
     const bookings = await prisma.booking.findMany({
       where: {
         court: {
-          venue: {
+          Venue: {
             ownerId: owner.id,
           },
         },
       },
       include: {
-        user: {
+        User: {
           select: {
             fullName: true,
             email: true,
@@ -39,7 +39,7 @@ export async function GET(request: Request) {
         },
         court: {
           include: {
-            venue: {
+            Venue: {
               select: {
                 name: true,
               },

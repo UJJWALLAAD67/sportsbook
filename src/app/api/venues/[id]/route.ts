@@ -20,9 +20,9 @@ export async function GET(
         approved: true,
       },
       include: {
-        owner: {
+        FacilityOwner: {
           include: {
-            user: {
+            User: {
               select: {
                 fullName: true,
                 email: true,
@@ -30,14 +30,14 @@ export async function GET(
             },
           },
         },
-        courts: {
+        Court: {
           orderBy: {
             name: "asc",
           },
         },
-        reviews: {
+        Review: {
           include: {
-            user: {
+            User: {
               select: {
                 fullName: true,
                 avatarUrl: true,
@@ -51,7 +51,7 @@ export async function GET(
         },
         _count: {
           select: {
-            reviews: true,
+            Review: true,
           },
         },
       },
@@ -63,22 +63,22 @@ export async function GET(
 
     // Calculate average rating
     const avgRating =
-      venue.reviews.length > 0
-        ? venue.reviews.reduce((sum, review) => sum + review.rating, 0) /
-          venue.reviews.length
+      venue.Review.length > 0
+        ? venue.Review.reduce((sum, review) => sum + review.rating, 0) /
+          venue.Review.length
         : 0;
 
     // Get unique sports
-    const sports = [...new Set(venue.courts.map((court) => court.sport))];
+    const sports = [...new Set(venue.Court.map((court) => court.sport))];
 
     // Get price range
-    const prices = venue.courts.map((court) => Number(court.pricePerHour));
+    const prices = venue.Court.map((court) => Number(court.pricePerHour));
     const minPrice = prices.length > 0 ? Math.min(...prices)  : 0;
     const maxPrice = prices.length > 0 ? Math.max(...prices)  : 0;
 
     // Get operating hours
-    const openTimes = venue.courts.map((court) => court.openTime);
-    const closeTimes = venue.courts.map((court) => court.closeTime);
+    const openTimes = venue.Court.map((court) => court.openTime);
+    const closeTimes = venue.Court.map((court) => court.closeTime);
     const earliestOpen = openTimes.length > 0 ? Math.min(...openTimes) : 6;
     const latestClose = closeTimes.length > 0 ? Math.max(...closeTimes) : 22;
 
@@ -95,18 +95,18 @@ export async function GET(
       latitude: venue.latitude,
       longitude: venue.longitude,
       rating: Math.round(avgRating * 10) / 10,
-      reviewCount: venue._count.reviews,
+      reviewCount: venue._count.Review,
       sports,
       minPrice,
       maxPrice,
-      currency: venue.courts[0]?.currency || "INR",
+      currency: venue.Court[0]?.currency || "INR",
       operatingHours: {
         open: earliestOpen,
         close: latestClose,
       },
       amenities: venue.amenities,
       photos: venue.image ? [venue.image] : [], // Map single image to photos array
-      courts: venue.courts.map((court) => ({
+      courts: venue.Court.map((court) => ({
         id: court.id,
         name: court.name,
         sport: court.sport,
@@ -115,20 +115,20 @@ export async function GET(
         openTime: court.openTime,
         closeTime: court.closeTime,
       })),
-      reviews: venue.reviews.map((review) => ({
+      reviews: venue.Review.map((review) => ({
         id: review.id,
         rating: review.rating,
         comment: review.comment,
         createdAt: review.createdAt,
         user: {
-          name: review.user.fullName,
-          avatar: review.user.avatarUrl,
+          name: review.User.fullName,
+          avatar: review.User.avatarUrl,
         },
       })),
       owner: {
-        name: venue.owner.user.fullName,
-        businessName: venue.owner.businessName,
-        phone: venue.owner.phone,
+        name: venue.FacilityOwner.User.fullName,
+        businessName: venue.FacilityOwner.businessName,
+        phone: venue.FacilityOwner.phone,
       },
     };
 

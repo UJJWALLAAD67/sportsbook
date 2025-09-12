@@ -95,7 +95,7 @@ model Payment {
   gateway               String        @default("stripe")
   stripePaymentIntentId String?       @unique
   stripeChargeId        String?
-  amount                Decimal   @db.Decimal(10, 2)
+  amount                Decimal       @db.Decimal(10, 2)
   currency              String        @default("INR")
   status                PaymentStatus @default(PENDING)
   receiptUrl            String?

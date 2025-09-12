@@ -94,7 +94,7 @@ export async function GET() {
     const totalBookings = await prisma.booking.count({
       where: {
         court: {
-          venue: {
+          Venue: {
             ownerId: owner.id
           }
         }
@@ -104,7 +104,7 @@ export async function GET() {
     const thisMonthBookings = await prisma.booking.count({
       where: {
         court: {
-          venue: {
+          Venue: {
             ownerId: owner.id
           }
         },
@@ -118,7 +118,7 @@ export async function GET() {
     const lastMonthBookings = await prisma.booking.count({
       where: {
         court: {
-          venue: {
+          Venue: {
             ownerId: owner.id
           }
         },
@@ -132,7 +132,7 @@ export async function GET() {
     const todayBookings = await prisma.booking.count({
       where: {
         court: {
-          venue: {
+          Venue: {
             ownerId: owner.id
           }
         },
@@ -157,7 +157,7 @@ export async function GET() {
       where: {
         booking: {
           court: {
-            venue: {
+            Venue: {
               ownerId: owner.id
             }
           }
@@ -171,7 +171,7 @@ export async function GET() {
       where: {
         booking: {
           court: {
-            venue: {
+            Venue: {
               ownerId: owner.id
             }
           }
@@ -189,7 +189,7 @@ export async function GET() {
       where: {
         booking: {
           court: {
-            venue: {
+            Venue: {
               ownerId: owner.id
             }
           }
@@ -206,7 +206,7 @@ export async function GET() {
     const recentBookings = await prisma.booking.findMany({
       where: {
         court: {
-          venue: {
+          Venue: {
             ownerId: owner.id
           }
         }
@@ -214,10 +214,10 @@ export async function GET() {
       include: {
         court: {
           include: {
-            venue: true
+            Venue: true
           }
         },
-        user: {
+        User: {
           select: {
             fullName: true
           }
@@ -263,8 +263,8 @@ export async function GET() {
       recentActivity: recentBookings.map(booking => ({
         id: booking.id,
         type: booking.status === BookingStatus.CONFIRMED ? 'booking' : 'pending_booking',
-        message: `${booking.status === BookingStatus.CONFIRMED ? 'New booking' : 'Pending booking'} at ${booking.court.name} - ${booking.court.venue.name}`,
-        user: booking.user.fullName,
+        message: `${booking.status === BookingStatus.CONFIRMED ? 'New booking' : 'Pending booking'} at ${booking.court.name} - ${booking.court.Venue.name}`,
+        user: booking.User.fullName,
         amount: null, // We'll get payment info separately if needed
         createdAt: booking.createdAt,
         timeAgo: getTimeAgo(booking.createdAt)

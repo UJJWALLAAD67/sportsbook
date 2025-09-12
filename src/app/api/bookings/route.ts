@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
       // 1. Verify court exists and get current booking state
       const court = await tx.court.findUnique({
         where: { id: courtId },
-        include: { venue: true }
+        include: { Venue: true }
       });
 
       if (!court) {
@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
       }
 
       // 3. Verify the venue is approved
-      if (!court.venue.approved) {
+      if (!court.Venue.approved) {
         throw new Error("Venue is not approved for bookings");
       }
 
@@ -104,7 +104,7 @@ export async function POST(req: NextRequest) {
         include: {
           court: {
             include: {
-              venue: true
+              Venue: true
             }
           },
           user: {

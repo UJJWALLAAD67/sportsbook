@@ -39,7 +39,7 @@ export async function GET(request: Request) {
         include: {
           court: {
             include: {
-              venue: {
+              Venue: {
                 select: {
                   id: true,
                   name: true,
@@ -80,12 +80,12 @@ export async function GET(request: Request) {
         id: booking.court.id,
         name: booking.court.name,
         sport: booking.court.sport,
-        venue: {
-          id: booking.court.venue.id,
-          name: booking.court.venue.name,
-          address: booking.court.venue.address,
-          city: booking.court.venue.city,
-          state: booking.court.venue.state
+        Venue: {
+          id: booking.court.Venue.id,
+          name: booking.court.Venue.name,
+          address: booking.court.Venue.address,
+          city: booking.court.Venue.city,
+          state: booking.court.Venue.state
         }
       },
       payment: booking.payment ? {

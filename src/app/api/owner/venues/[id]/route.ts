@@ -38,10 +38,10 @@ export async function GET(
     const venue = await prisma.venue.findFirst({
       where: {
         id: venueId,
-        owner: { userId: session.user.id },
+        FacilityOwner: { userId: session.user.id },
       },
       include: {
-        courts: true,
+        Court: true,
       },
     });
 
@@ -55,7 +55,7 @@ export async function GET(
     // Convert price from Paisa to Rupees
     const venueForFrontend = {
       ...venue,
-      courts: venue.courts.map((court) => ({
+      courts: venue.Court.map((court) => ({
         ...court,
         pricePerHour: court.pricePerHour,
       })),
@@ -152,8 +152,8 @@ export async function PUT(
     const { courts: submittedCourts, ...venueFields } = validation.data;
 
     const existingVenue = await prisma.venue.findFirst({
-      where: { id: venueId, owner: { userId: session.user.id } },
-      select: { courts: { select: { id: true } }, imagePublicId: true },
+      where: { id: venueId, FacilityOwner: { userId: session.user.id } },
+      select: { Court: { select: { id: true } }, imagePublicId: true },
     });
 
     if (!existingVenue) {
@@ -163,7 +163,7 @@ export async function PUT(
       );
     }
 
-    const existingCourtIds = existingVenue.courts.map((c) => c.id);
+    const existingCourtIds = existingVenue.Court.map((c) => c.id);
     const submittedCourtIds = submittedCourts
       .map((c) => c.id)
       .filter((id): id is number => !!id);
@@ -257,14 +257,14 @@ export async function DELETE(
     const existingVenue = await prisma.venue.findFirst({
       where: {
         id: venueId,
-        owner: { userId: session.user.id },
+        FacilityOwner: { userId: session.user.id },
       },
       include: {
-        courts: {
+        Court: {
           select: {
             _count: {
               select: {
-                bookings: {
+                Booking: {
                   where: { status: { in: ["PENDING", "CONFIRMED"] } },
                 },
               },
@@ -282,8 +282,8 @@ export async function DELETE(
       );
     }
 
-    const hasActiveBookings = existingVenue.courts.some(
-      (court) => court._count.bookings > 0
+    const hasActiveBookings = existingVenue.Court.some(
+      (court) => court._count.Booking > 0
     );
 
     if (hasActiveBookings) {

@@ -9,21 +9,21 @@ export async function GET() {
         approved: true,
       },
       include: {
-        courts: {
+        Court: {
           select: {
             sport: true,
             pricePerHour: true,
             currency: true,
           },
         },
-        reviews: {
+        Review: {
           select: {
             rating: true,
           },
         },
         _count: {
           select: {
-            reviews: true,
+            Review: true,
           },
         },
       },
@@ -35,18 +35,18 @@ export async function GET() {
     const transformedVenues = featuredVenues.map((venue) => {
       // Calculate average rating
       const avgRating =
-        venue.reviews.length > 0
-          ? venue.reviews.reduce((sum, review) => sum + review.rating, 0) /
-            venue.reviews.length
+        venue.Review.length > 0
+          ? venue.Review.reduce((sum, review) => sum + review.rating, 0) /
+            venue.Review.length
           : 0;
 
       // Get unique sports
-      const sports = [...new Set(venue.courts.map((court) => court.sport))];
+      const sports = [...new Set(venue.Court.map((court) => court.sport))];
 
       // Get minimum price per hour
       const minPrice = 
-        venue.courts.length > 0
-          ? Math.min(...venue.courts.map((court) => Number(court.pricePerHour))) // Already in Rupees
+        venue.Court.length > 0
+          ? Math.min(...venue.Court.map((court) => Number(court.pricePerHour))) // Already in Rupees
           : 0;
 
       // Generate tags based on venue data
@@ -65,13 +65,14 @@ export async function GET() {
         city: venue.city,
         state: venue.state,
         rating: Math.round(avgRating * 10) / 10,
-        reviewCount: venue._count.reviews,
+        reviewCount: venue._count.Review,
         sports,
         minPricePerHour: minPrice,
-        currency: venue.courts[0]?.currency || "INR",
+        currency: venue.Court[0]?.currency || "INR",
         amenities: venue.amenities,
         image: venue.image, // Include the image field
         tags: tags.slice(0, 3), // Limit to 3 tags
+        courts: venue.Court // Map Court to courts for frontend compatibility
       };
     });
 

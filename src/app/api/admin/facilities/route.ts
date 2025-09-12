@@ -17,14 +17,14 @@ export async function GET(req: NextRequest) {
     const pendingVenues = await prisma.venue.findMany({
       where: { approved: false },
       include: {
-        owner: {
+        FacilityOwner: {
           include: {
-            user: {
+            User: {
               select: { id: true, fullName: true, email: true },
             },
           },
         },
-        courts: true,
+        Court: true,
       },
       orderBy: { createdAt: "desc" },
     });
@@ -41,12 +41,12 @@ export async function GET(req: NextRequest) {
       photos: v.image ? [v.image] : [],
       approved: v.approved,
       owner: {
-        id: v.owner.user.id,
-        fullName: v.owner.user.fullName,
-        email: v.owner.user.email,
-        businessName: v.owner.businessName || undefined,
+        id: v.FacilityOwner.User.id,
+        fullName: v.FacilityOwner.User.fullName,
+        email: v.FacilityOwner.User.email,
+        businessName: v.FacilityOwner.businessName || undefined,
       },
-      courts: v.courts.map((c) => ({
+      courts: v.Court.map((c) => ({
         id: c.id,
         name: c.name,
         sport: c.sport,
