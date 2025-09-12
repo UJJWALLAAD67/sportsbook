@@ -26,8 +26,8 @@ export async function POST(req: NextRequest) {
     const booking = await prisma.booking.findUnique({
       where: { id: bookingId },
       include: {
-        payment: true,
-        court: {
+        Payment: true,
+        Court: {
           select: {
             pricePerHour: true,
           },
@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Booking not found" }, { status: 404 });
     }
 
-    if (booking.payment?.status === "SUCCEEDED") {
+    if (booking.Payment?.status === "SUCCEEDED") {
       return NextResponse.json(
         { error: "Payment already succeeded for this booking" },
         { status: 400 }
@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
     // pricePerHour is stored in rupees, convert to paisa for Stripe
     const durationInMilliseconds = booking.endTime.getTime() - booking.startTime.getTime();
     const durationInHours = durationInMilliseconds / (1000 * 60 * 60);
-    const amountInRupees = Number(booking.court.pricePerHour) * durationInHours;
+    const amountInRupees = Number(booking.Court.pricePerHour) * durationInHours;
     const amount = Math.round(amountInRupees * 100); // Convert rupees to paisa
 
     // Create a PaymentIntent with the order amount and currency
@@ -61,9 +61,9 @@ export async function POST(req: NextRequest) {
     });
 
     // Update the payment record with the PaymentIntent ID
-    if (booking.payment) {
+    if (booking.Payment) {
       await prisma.payment.update({
-        where: { id: booking.payment.id },
+        where: { id: booking.Payment.id },
         data: {
           stripePaymentIntentId: paymentIntent.id,
           amount: amount, // Ensure amount is consistent
@@ -79,8 +79,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ clientSecret: paymentIntent.client_secret });
   } catch (error) {
     console.error("Error creating payment intent:", error);
+    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
     return NextResponse.json(
-      { error: "Failed to create payment intent" },
+      { error: `Failed to create payment intent: ${errorMessage}` },
       { status: 500 }
     );
   }

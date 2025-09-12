@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { Prisma } from "@prisma/client";
+
 
 export async function GET(request: Request) {
   try {
@@ -193,7 +193,7 @@ export async function GET(request: Request) {
         select: { city: true },
         distinct: ["city"],
       }),
-      prisma.court.findMany({
+      prisma.Court.findMany({
         where: { Venue: { approved: true } },
         select: { sport: true },
         distinct: ["sport"],

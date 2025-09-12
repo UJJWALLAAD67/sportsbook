@@ -62,10 +62,10 @@ export async function POST(req: NextRequest) {
         where: {
           courtId,
           startTime: {
-            lte: bookingEndTime
+            lt: bookingEndTime
           },
           endTime: {
-            gte: bookingStartTime
+            gt: bookingStartTime
           },
           status: {
             in: [BookingStatus.PENDING, BookingStatus.CONFIRMED]
@@ -102,12 +102,12 @@ export async function POST(req: NextRequest) {
           idempotencyKey: idempotencyKey || `${token.id}-${Date.now()}-${Math.random()}`
         },
         include: {
-          court: {
+          Court: {
             include: {
               Venue: true
             }
           },
-          user: {
+          User: {
             select: {
               id: true,
               fullName: true,
@@ -126,6 +126,12 @@ export async function POST(req: NextRequest) {
           currency: court.currency || "INR",
           status: "PENDING"
         }
+      });
+
+      // Update the booking with the paymentId
+      await tx.booking.update({
+        where: { id: booking.id },
+        data: { paymentId: payment.id }
       });
 
       return { booking, payment };

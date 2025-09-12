@@ -31,6 +31,8 @@ export async function POST(
 
     const { status, paymentIntentId, paymentMethodId } = await request.json();
 
+    console.log("Received payment callback:", { bookingId, status, paymentIntentId, paymentMethodId });
+
     // Validate required fields
     if (!status) {
       return NextResponse.json(
@@ -53,8 +55,8 @@ export async function POST(
         userId: session.user.id // Ensure user owns the booking
       },
       include: {
-        payment: true,
-        court: {
+        Payment: true,
+        Court: {
           include: {
             Venue: {
               select: {
@@ -77,7 +79,7 @@ export async function POST(
       );
     }
 
-    if (!booking.payment) {
+    if (!booking.Payment) {
       return NextResponse.json(
         { error: "No payment record found for this booking" },
         { status: 404 }
@@ -85,7 +87,7 @@ export async function POST(
     }
 
     // Check if payment is already completed
-    if (booking.payment.status === "SUCCEEDED") {
+    if (booking.Payment.status === "SUCCEEDED") {
       return NextResponse.json(
         { error: "Payment already completed" },
         { status: 400 }
@@ -133,11 +135,11 @@ export async function POST(
 
       // Update payment record
       const updatedPayment = await tx.payment.update({
-        where: { id: booking.payment!.id },
+        where: { id: booking.Payment!.id },
         data: {
           status: paymentStatus as any,
-          stripePaymentIntentId: paymentIntentId || booking.payment!.stripePaymentIntentId,
-          paymentMethod: paymentMethodId || booking.payment!.paymentMethod
+          stripePaymentIntentId: paymentIntentId || booking.Payment!.stripePaymentIntentId,
+          paymentMethod: paymentMethodId || booking.Payment!.paymentMethod
         }
       });
 
@@ -148,7 +150,7 @@ export async function POST(
           status: bookingStatus
         },
         include: {
-          court: {
+          Court: {
             include: {
               Venue: {
                 select: {
@@ -173,14 +175,14 @@ export async function POST(
       status: result.updatedBooking.status,
       startTime: result.updatedBooking.startTime.toISOString(),
       endTime: result.updatedBooking.endTime.toISOString(),
-      court: {
-        id: result.updatedBooking.court.id,
-        name: result.updatedBooking.court.name,
-        sport: result.updatedBooking.court.sport,
-        pricePerHour: result.updatedBooking.court.pricePerHour,
-        venue: result.updatedBooking.court.venue
+      Court: {
+        id: result.updatedBooking.Court.id,
+        name: result.updatedBooking.Court.name,
+        sport: result.updatedBooking.Court.sport,
+        pricePerHour: result.updatedBooking.Court.pricePerHour,
+        Venue: result.updatedBooking.Court.Venue
       },
-      payment: {
+      Payment: { // Changed from 'payment' to 'Payment'
         id: result.updatedPayment.id,
         status: result.updatedPayment.status,
         amount: result.updatedPayment.amount,
@@ -244,7 +246,7 @@ export async function GET(
         userId: session.user.id
       },
       include: {
-        payment: true
+        Payment: true // Changed from 'payment' to 'Payment'
       }
     });
 
@@ -255,7 +257,7 @@ export async function GET(
       );
     }
 
-    if (!booking.payment) {
+    if (!booking.Payment) { // Changed from 'booking.payment' to 'booking.Payment'
       return NextResponse.json(
         { error: "No payment record found for this booking" },
         { status: 404 }
@@ -263,14 +265,14 @@ export async function GET(
     }
 
     return NextResponse.json({
-      payment: {
-        id: booking.payment.id,
-        status: booking.payment.status,
-        amount: booking.payment.amount,
-        currency: booking.payment.currency,
-        paymentMethod: booking.payment.paymentMethod,
-        stripePaymentIntentId: booking.payment.stripePaymentIntentId,
-        receiptUrl: booking.payment.receiptUrl
+      Payment: { // Changed from 'payment' to 'Payment'
+        id: booking.Payment.id,
+        status: booking.Payment.status,
+        amount: booking.Payment.amount,
+        currency: booking.Payment.currency,
+        paymentMethod: booking.Payment.paymentMethod,
+        stripePaymentIntentId: booking.Payment.stripePaymentIntentId,
+        receiptUrl: booking.Payment.receiptUrl
       }
     });
 

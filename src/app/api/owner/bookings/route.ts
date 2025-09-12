@@ -1,63 +1,90 @@
-import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { NextRequest, NextResponse } from "next/server";
+import { getToken } from "next-auth/jwt";
 import { prisma } from "@/lib/prisma";
+import { Role } from "@/generated/prisma";
 
-export async function GET(request: Request) {
+export async function GET(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const token = await getToken({ req });
 
-    if (!session || session.user.role !== "OWNER") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!token || token.role !== Role.OWNER) {
+      return NextResponse.json(
+        { error: "Unauthorized. Owner access required." },
+        { status: 403 }
+      );
     }
 
-    const owner = await prisma.facilityOwner.findUnique({
-      where: { userId: session.user.id },
+    const ownerId = token.id;
+
+    // Find all venues owned by this owner
+    const ownedVenues = await prisma.venue.findMany({
+      where: { ownerId: ownerId },
+      select: { id: true },
     });
 
-    if (!owner) {
-      return NextResponse.json(
-        { error: "Owner profile not found" },
-        { status: 404 }
-      );
+    const ownedVenueIds = ownedVenues.map((venue) => venue.id);
+
+    if (ownedVenueIds.length === 0) {
+      return NextResponse.json([]); // No venues, so no bookings
     }
 
     const bookings = await prisma.booking.findMany({
       where: {
-        court: {
-          Venue: {
-            ownerId: owner.id,
+        Court: {
+          venueId: {
+            in: ownedVenueIds,
           },
         },
       },
       include: {
         User: {
-          select: {
-            fullName: true,
-            email: true,
-          },
+          select: { fullName: true, email: true },
         },
-        court: {
-          include: {
+        Court: {
+          select: {
+            name: true,
+            sport: true,
             Venue: {
-              select: {
-                name: true,
-              },
+              select: { name: true },
             },
           },
         },
-        payment: true,
+        Payment: {
+          select: { amount: true, status: true },
+        },
       },
-      orderBy: {
-        startTime: "desc",
-      },
+      orderBy: { startTime: "desc" },
     });
 
-    return NextResponse.json(bookings);
+    const transformedBookings = bookings.map((booking) => ({
+      id: booking.id,
+      startTime: booking.startTime.toISOString(),
+      endTime: booking.endTime.toISOString(),
+      status: booking.status,
+      user: {
+        fullName: booking.User.fullName,
+        email: booking.User.email,
+      },
+      Court: {
+        name: booking.Court.name,
+        sport: booking.Court.sport,
+        Venue: {
+          name: booking.Court.Venue.name,
+        },
+      },
+      Payment: booking.Payment
+        ? {
+            amount: Number(booking.Payment.amount),
+            status: booking.Payment.status,
+          }
+        : null,
+    }));
+
+    return NextResponse.json(transformedBookings);
   } catch (error) {
-    console.error("Error fetching bookings:", error);
+    console.error("Error fetching owner bookings:", error);
     return NextResponse.json(
-      { error: "Failed to fetch bookings" },
+      { error: "Failed to fetch owner bookings" },
       { status: 500 }
     );
   }

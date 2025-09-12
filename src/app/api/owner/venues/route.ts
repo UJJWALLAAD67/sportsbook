@@ -5,7 +5,7 @@ import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/prisma";
 import { authOptions } from "@/lib/auth";
 import slugify from "slugify";
-import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
+import { Prisma } from "@prisma/client";
 import { venueSchema } from "@/lib/schemas/venue";
 import { z } from "zod";
 import {
@@ -14,7 +14,6 @@ import {
 } from "@/lib/cloudinary";
 
 type VenueFormData = z.infer<typeof venueSchema>;
-type CourtInput = VenueFormData['courts'][number];
 
 // POST /api/owner/venues
 export async function POST(request: Request) {
@@ -31,10 +30,7 @@ export async function POST(request: Request) {
     let venueData: VenueFormData;
 
     if (contentType?.includes("multipart/form-data")) {
-      // Handle multipart form with image
       const formData = await request.formData();
-
-      // Parse JSON venue data *before* uploading image
       const venueDataString = formData.get("venueData") as string;
       if (!venueDataString) {
         return NextResponse.json(
@@ -42,23 +38,8 @@ export async function POST(request: Request) {
           { status: 400 }
         );
       }
-
       venueData = JSON.parse(venueDataString);
 
-      // Validate venue data
-      const validated = venueSchema.safeParse(venueData);
-      if (!validated.success) {
-        return NextResponse.json(
-          {
-            message: "Invalid data",
-            errors: validated.error.flatten().fieldErrors,
-          },
-          { status: 400 }
-        );
-      }
-      venueData = validated.data;
-
-      // Upload image if provided
       const imageFile = formData.get("image") as File | null;
       if (imageFile && imageFile.size > 0) {
         const allowedTypes = [
@@ -97,33 +78,21 @@ export async function POST(request: Request) {
         }
       }
     } else {
-      // Handle plain JSON requests
-      const body = await request.json();
-      const validated = venueSchema.safeParse(body);
-      if (!validated.success) {
-        return NextResponse.json(
-          {
-            message: "Invalid data",
-            errors: validated.error.flatten().fieldErrors,
-          },
-          { status: 400 }
-        );
-      }
-      venueData = validated.data;
+      venueData = await request.json();
     }
 
-    const {
-      name,
-      description,
-      address,
-      city,
-      state,
-      country,
-      amenities,
-      courts,
-    } = venueData;
+    const validated = venueSchema.safeParse(venueData);
+    if (!validated.success) {
+      return NextResponse.json(
+        {
+          message: "Invalid data",
+          errors: validated.error.flatten().fieldErrors,
+        },
+        { status: 400 }
+      );
+    }
+    const { courts, ...venueFields } = validated.data;
 
-    // Ensure owner profile exists
     const owner = await prisma.facilityOwner.findUnique({
       where: { userId: session.user.id },
     });
@@ -134,7 +103,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const slug = slugify(name, { lower: true, strict: true });
+    const slug = slugify(venueFields.name, { lower: true, strict: true });
 
     const newVenue = await prisma.$transaction(async (tx) => {
       const existingVenue = await tx.venue.findUnique({ where: { slug } });
@@ -146,20 +115,14 @@ export async function POST(request: Request) {
 
       return tx.venue.create({
         data: {
+          ...venueFields,
           ownerId: owner.id,
-          name,
           slug,
-          description,
-          address,
-          city,
-          state,
-          country,
-          amenities,
           image: cloudinaryResult?.secure_url || null,
           imagePublicId: cloudinaryResult?.public_id || null,
-          approved: false,
+          approved: false, // Default to not approved
           courts: {
-            create: courts.map((court: CourtInput) => ({
+            create: courts.map((court) => ({
               ...court,
               pricePerHour: court.pricePerHour,
             })),
@@ -172,7 +135,6 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("Error creating venue:", error);
 
-    // Rollback Cloudinary upload if DB insert fails
     if (cloudinaryResult?.public_id) {
       try {
         await deleteImageFromCloudinary(cloudinaryResult.public_id);
@@ -181,12 +143,9 @@ export async function POST(request: Request) {
       }
     }
 
-    if (
-      error instanceof PrismaClientKnownRequestError &&
-      error.code === "P2002"
-    ) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
       return NextResponse.json(
-        { message: "A venue with this slug already exists." },
+        { message: "A venue with this name already exists." },
         { status: 409 }
       );
     }
@@ -227,10 +186,13 @@ export async function GET(request: Request) {
       include: { Court: true },
     });
 
-    // Transform the response to maintain frontend compatibility
-    const transformedVenues = venues.map(venue => ({
+    // Transform the response to match frontend expectations
+    const transformedVenues = venues.map((venue) => ({
       ...venue,
-      courts: venue.Court // Map Court to courts for frontend compatibility
+      courts: venue.Court.map(court => ({
+        ...court,
+        pricePerHour: court.pricePerHour, // Already in correct format
+      })),
     }));
 
     return NextResponse.json(transformedVenues);

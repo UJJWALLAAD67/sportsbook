@@ -28,12 +28,12 @@ interface Booking {
   endTime: string;
   status: string;
   notes: string | null;
-  court: {
+  Court: {
     id: number;
     name: string;
     sport: string;
     pricePerHour: number;
-    venue: {
+    Venue: {
       id: number;
       name: string;
       address: string;
@@ -41,7 +41,7 @@ interface Booking {
       state: string;
     };
   };
-  payment?: {
+  Payment?: {
     id: number;
     amount: number;
     status: string;
@@ -124,13 +124,7 @@ export default function PaymentPage() {
     const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(
       clientSecret!,
       {
-        payment_method: {
-          card: {
-            // This would normally be collected from Stripe Elements
-            // For testing purposes, using a test token
-            token: "tok_visa" // Test token - replace with actual card collection
-          }
-        }
+        payment_method: "pm_card_visa", // Test payment method
       }
     );
 
@@ -140,7 +134,11 @@ export default function PaymentPage() {
 
     if (paymentIntent && paymentIntent.status === "succeeded") {
       // Update our backend with the successful payment
-      await completePayment("succeeded", paymentIntent.id);
+      await completePayment(
+        "succeeded",
+        paymentIntent.id,
+        paymentIntent.payment_method as string
+      );
       setPaymentStatus("success");
       setTimeout(() => {
         router.push("/bookings?success=payment-completed");
@@ -150,7 +148,11 @@ export default function PaymentPage() {
     }
   };
 
-  const completePayment = async (status: string, paymentIntentId: string) => {
+  const completePayment = async (
+    status: string,
+    paymentIntentId: string,
+    paymentMethodId: string
+  ) => {
     const response = await fetch(`/api/bookings/${bookingId}/payment`, {
       method: "POST",
       headers: {
@@ -159,6 +161,7 @@ export default function PaymentPage() {
       body: JSON.stringify({
         status,
         paymentIntentId,
+        paymentMethodId,
       }),
     });
 
@@ -213,11 +216,11 @@ export default function PaymentPage() {
             <div className="space-y-2 text-sm text-gray-600">
               <div className="flex justify-between">
                 <span>Venue:</span>
-                <span>{booking?.court.venue.name}</span>
+                <span>{booking?.Court.Venue.name}</span>
               </div>
               <div className="flex justify-between">
                 <span>Court:</span>
-                <span>{booking?.court.name}</span>
+                <span>{booking?.Court.name}</span>
               </div>
               <div className="flex justify-between">
                 <span>Date:</span>
@@ -240,7 +243,7 @@ export default function PaymentPage() {
   const calculateTotalPrice = () => {
     if (!booking) return 0;
     const duration = (new Date(booking.endTime).getTime() - new Date(booking.startTime).getTime()) / (1000 * 60 * 60);
-    return Math.round(Number(booking.court.pricePerHour) * duration);
+    return Math.round(Number(booking.Court.pricePerHour) * duration);
   };
 
   return (
@@ -260,11 +263,11 @@ export default function PaymentPage() {
             {booking && (
               <div className="space-y-4">
                 <div className="border-b border-gray-200 pb-4">
-                  <h3 className="font-semibold text-gray-900">{booking.court.venue.name}</h3>
-                  <p className="text-sm text-gray-600">{booking.court.name} - {booking.court.sport}</p>
+                  <h3 className="font-semibold text-gray-900">{booking.Court.Venue.name}</h3>
+                  <p className="text-sm text-gray-600">{booking.Court.name} - {booking.Court.sport}</p>
                   <div className="flex items-center text-sm text-gray-500 mt-1">
                     <MapPinIcon className="w-4 h-4 mr-1" />
-                    <span>{booking.court.venue.address}, {booking.court.venue.city}</span>
+                    <span>{booking.Court.Venue.address}, {booking.Court.Venue.city}</span>
                   </div>
                 </div>
 

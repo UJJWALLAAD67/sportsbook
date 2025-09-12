@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
         email: v.FacilityOwner.User.email,
         businessName: v.FacilityOwner.businessName || undefined,
       },
-      courts: v.Court.map((c) => ({
+      Court: v.Court.map((c) => ({
         id: c.id,
         name: c.name,
         sport: c.sport,

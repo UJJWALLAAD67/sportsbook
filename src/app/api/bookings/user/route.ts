@@ -37,9 +37,9 @@ export async function GET(request: Request) {
       prisma.booking.findMany({
         where,
         include: {
-          court: {
+          Court: {
             include: {
-              Venue: {
+              venue: {
                 select: {
                   id: true,
                   name: true,
@@ -50,7 +50,7 @@ export async function GET(request: Request) {
               }
             }
           },
-          payment: {
+          Payment: {
             select: {
               id: true,
               amount: true,
@@ -73,25 +73,25 @@ export async function GET(request: Request) {
       id: booking.id,
       startTime: booking.startTime.toISOString(),
       endTime: booking.endTime.toISOString(),
-      totalAmount: booking.payment?.amount || 0,
+      totalAmount: booking.totalAmount,
       status: booking.status,
       createdAt: booking.createdAt.toISOString(),
-      court: {
-        id: booking.court.id,
-        name: booking.court.name,
-        sport: booking.court.sport,
-        Venue: {
-          id: booking.court.Venue.id,
-          name: booking.court.Venue.name,
-          address: booking.court.Venue.address,
-          city: booking.court.Venue.city,
-          state: booking.court.Venue.state
+      Court: {
+        id: booking.Court.id,
+        name: booking.Court.name,
+        sport: booking.Court.sport,
+        venue: {
+          id: booking.Court.venue?.id,
+          name: booking.Court.venue?.name,
+          address: booking.Court.venue?.address,
+          city: booking.Court.venue?.city,
+          state: booking.Court.venue?.state
         }
       },
-      payment: booking.payment ? {
-        id: booking.payment.id,
-        status: booking.payment.status,
-        amount: booking.payment.amount
+      Payment: booking.Payment ? {
+        id: booking.Payment.id,
+        status: booking.Payment.status,
+        amount: booking.Payment.amount
       } : null
     }));
 

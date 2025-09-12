@@ -1,14 +1,15 @@
+// /src/app/api/owner/venues/[id]/route.ts
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/prisma";
 import { authOptions } from "@/lib/auth";
 import { venueSchema } from "@/lib/schemas/venue";
+import slugify from "slugify";
 import {
   uploadImageToCloudinary,
   deleteImageFromCloudinary,
 } from "@/lib/cloudinary";
 import { z } from "zod";
-import { Prisma } from "@prisma/client";
 
 type VenueFormData = z.infer<typeof venueSchema>;
 
@@ -19,7 +20,7 @@ type VenueFormData = z.infer<typeof venueSchema>;
  */
 export async function GET(
   request: Request,
-  context: { params: Promise<{ id: string }> }
+  context: { params: { id: string } }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -28,7 +29,7 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { id } = await context.params;
+    const { id } = context.params;
     const venueId = parseInt(id, 10);
 
     if (isNaN(venueId)) {
@@ -52,12 +53,12 @@ export async function GET(
       );
     }
 
-    // Convert price from Paisa to Rupees
+    // Convert price from Paisa to Rupees for frontend display
     const venueForFrontend = {
       ...venue,
       courts: venue.Court.map((court) => ({
         ...court,
-        pricePerHour: court.pricePerHour,
+        pricePerHour: court.pricePerHour, // Keep as is, assuming it's stored correctly
       })),
     };
 
@@ -77,7 +78,7 @@ export async function GET(
  */
 export async function PUT(
   request: Request,
-  context: { params: Promise<{ id: string }> }
+  context: { params: { id: string } }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -85,7 +86,7 @@ export async function PUT(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { id } = await context.params;
+    const { id } = context.params;
     const venueId = parseInt(id, 10);
     if (isNaN(venueId)) {
       return NextResponse.json({ error: "Invalid venue ID" }, { status: 400 });
@@ -97,7 +98,8 @@ export async function PUT(
 
     if (contentType?.includes("multipart/form-data")) {
       const formData = await request.formData();
-      const imageFile = formData.get("image") as File;
+      const imageFile = formData.get("image") as File | null;
+
       if (imageFile && imageFile.size > 0) {
         const allowedTypes = [
           "image/jpeg",
@@ -105,7 +107,7 @@ export async function PUT(
           "image/png",
           "image/webp",
         ];
-        const maxSize = 10 * 1024 * 1024;
+        const maxSize = 10 * 1024 * 1024; // 10MB
 
         if (!allowedTypes.includes(imageFile.type)) {
           return NextResponse.json(
@@ -135,6 +137,12 @@ export async function PUT(
       }
 
       const venueDataString = formData.get("venueData") as string;
+      if (!venueDataString) {
+        return NextResponse.json(
+          { error: "Missing venueData" },
+          { status: 400 }
+        );
+      }
       venueData = JSON.parse(venueDataString);
     } else {
       venueData = await request.json();
@@ -148,7 +156,6 @@ export async function PUT(
       );
     }
 
-    // Fix: rename destructured variable to avoid conflict
     const { courts: submittedCourts, ...venueFields } = validation.data;
 
     const existingVenue = await prisma.venue.findFirst({
@@ -172,13 +179,10 @@ export async function PUT(
     );
 
     await prisma.$transaction(async (tx) => {
+      const slug = slugify(venueFields.name, { lower: true, strict: true });
       const updateData: any = {
-        name: venueFields.name,
-        description: venueFields.description,
-        address: venueFields.address,
-        city: venueFields.city,
-        state: venueFields.state,
-        country: venueFields.country,
+        ...venueFields,
+        slug,
         amenities: venueFields.amenities,
       };
 
@@ -238,7 +242,7 @@ export async function PUT(
  */
 export async function DELETE(
   request: Request,
-  context: { params: Promise<{ id: string }> }
+  context: { params: { id: string } }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -247,7 +251,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { id } = await context.params;
+    const { id } = context.params;
     const venueId = parseInt(id, 10);
 
     if (isNaN(venueId)) {
@@ -271,8 +275,8 @@ export async function DELETE(
             },
           },
         },
+        imagePublicId: true, // Include imagePublicId for Cloudinary deletion
       },
-      // Include imagePublicId for Cloudinary deletion
     });
 
     if (!existingVenue) {
@@ -297,18 +301,16 @@ export async function DELETE(
     }
 
     await prisma.$transaction(async (tx) => {
-      // Delete associated image from Cloudinary if it exists
       if (existingVenue.imagePublicId) {
         try {
           await deleteImageFromCloudinary(existingVenue.imagePublicId);
         } catch (error) {
           console.error("Failed to delete image from Cloudinary:", error);
-          // Continue with venue deletion even if image deletion fails
         }
       }
 
       await tx.court.deleteMany({ where: { venueId } });
-      await tx.review.deleteMany({ where: { venueId } });
+      await tx.review.deleteMany({ where: { venueId } }); // Assuming you have a Review model
       await tx.venue.delete({ where: { id: venueId } });
     });
 

@@ -34,7 +34,7 @@ export async function POST(
         userId: session.user.id
       },
       include: {
-        payment: true
+        Payment: true
       }
     });
 
@@ -78,13 +78,14 @@ export async function POST(
         status: "CANCELLED"
       },
       include: {
-        court: {
+        Court: {
           include: {
             Venue: {
               select: {
                 name: true
               }
             }
+            
           }
         }
       }
@@ -92,9 +93,9 @@ export async function POST(
 
     // If there's a payment, we should initiate a refund process
     // For now, we'll just update the payment status to indicate a refund is needed
-    if (booking.payment && booking.payment.status === "SUCCEEDED") {
+    if (booking.Payment && booking.Payment.status === "SUCCEEDED") {
       await prisma.payment.update({
-        where: { id: booking.payment.id },
+        where: { id: booking.Payment.id },
         data: {
           status: "REFUNDED"
         }

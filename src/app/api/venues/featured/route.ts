@@ -72,7 +72,8 @@ export async function GET() {
         amenities: venue.amenities,
         image: venue.image, // Include the image field
         tags: tags.slice(0, 3), // Limit to 3 tags
-        courts: venue.Court // Map Court to courts for frontend compatibility
+                Court: venue.Court // Map Court to courts for frontend compatibility
+
       };
     });
 
